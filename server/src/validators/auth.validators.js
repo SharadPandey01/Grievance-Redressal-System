@@ -98,4 +98,5 @@ module.exports = {
   validateLogin,
   validateUpdateMe,
   validateChangePassword,
+  isValidPassword,
 };

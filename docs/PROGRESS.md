@@ -92,4 +92,32 @@
 ### Verification
 `node scripts/smoke-auth.js` (with server running `NODE_ENV=test`) → **19 PASS, 0 FAIL**
 
+---
+
+## 2026-09-30 | Prompt 4 — Admin-Managed Master Data (Categories & Users)
+
+### What was built
+- **src/utils/escapeRegex.js**: helper function escaping regex special characters for safe dynamic text searches
+- **src/validators/category.validators.js**: `validateCreateCategory`, `validateUpdateCategory`
+- **src/validators/user.validators.js**: `validateCreateUser`, `validateUpdateUser`; reuses `isValidPassword`
+- **src/services/categoryService.js**: `getCategories` (active-only by default, `?all=true` for admin, sorted by name, populated `defaultHandler`), `createCategory` (unique name check, active officer handler validation), `updateCategory`, `deleteCategory` (soft delete with `isActive: false`)
+- **src/services/userService.js**: `getUsers` (paginated, filters by role/department/isActive, regex-safe search), `createUser` (admin creates any role with temp password, officer department check, bcrypt hash), `updateUser` (self-deactivation/demotion guards, last active admin protection), `getOfficers` (active officers, officer locked to own department, admin can view all or filter by department)
+- **src/controllers/categoryController.js** & **src/controllers/userController.js**: thin async controllers using `sendSuccess` and `asyncHandler`
+- **src/routes/category.routes.js** & **src/routes/user.routes.js**: mounted at `/api/categories` and `/api/users`; `/api/users/officers` defined before `/:id`
+- **scripts/smoke-master-data.js**: 43-assertion live smoke test exercising all 8 master data endpoints, RBAC rejections, input validations, soft deletion, and last-admin guards
+
+### Decisions
+- `/api/users/officers` placed before `/api/users/:id` in route order to prevent Express matching `:id = 'officers'`
+- Search queries sanitized with `escapeRegex` to prevent regex injection (ReDoS or invalid regex syntax crashes)
+- Soft deletion retains category documents with `isActive: false` so existing complaints keep valid references
+- Admin self-protection & last active admin guards enforced at service layer with 409 Conflict
+
+### Known Gaps
+- Category update does not yet cascade-notify if defaultHandler changes (notifications feature in future prompt)
+- Frontend client pages for category/user management to be built in client prompt
+
+### Verification
+`node scripts/smoke-master-data.js` (with server running `NODE_ENV=test`) → **43 PASS, 0 FAIL**  
+`node scripts/smoke-auth.js` → **19 PASS, 0 FAIL**
+
 

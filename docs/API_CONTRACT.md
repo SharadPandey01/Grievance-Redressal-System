@@ -70,8 +70,6 @@ Token payload: `{ id, role }`. Expires in 7 days.
 
 ## Endpoint Index
 
-## Endpoint Index
-
 | Method | Path | Auth | Description |
 |---|---|---|---|
 | GET | /api/health | Public | Server + DB health check |
@@ -80,6 +78,14 @@ Token payload: `{ id, role }`. Expires in 7 days.
 | GET | /api/auth/me | Bearer JWT | Get the current user |
 | PATCH | /api/auth/me | Bearer JWT | Update name / department |
 | POST | /api/auth/change-password | Bearer JWT | Change password |
+| GET | /api/categories | Bearer JWT | List categories (active only; ?all=true for admin) |
+| POST | /api/categories | Bearer JWT (admin) | Create category |
+| PATCH | /api/categories/:id | Bearer JWT (admin) | Update category |
+| DELETE | /api/categories/:id | Bearer JWT (admin) | Soft delete category (isActive=false) |
+| GET | /api/users | Bearer JWT (admin) | Paginated list of users with filters & search |
+| POST | /api/users | Bearer JWT (admin) | Create user of any role with temporary password |
+| PATCH | /api/users/:id | Bearer JWT (admin) | Update user role, department, name, isActive |
+| GET | /api/users/officers | Bearer JWT (officer, admin) | Active officers for assignment dropdown |
 
 > Rate limit on register and login: 20 requests / 15 min / IP.
 
@@ -232,4 +238,245 @@ Token payload: `{ id, role }`. Expires in 7 days.
 |---|---|
 | 400 | Validation failure or current password incorrect or new == current |
 | 401 | Unauthenticated |
+
+---
+
+## GET /api/categories
+
+**Auth:** Bearer JWT (any role)  
+**Description:** Returns categories sorted by name. Regular users see only active categories. Admins can provide `?all=true` to view inactive categories as well.
+
+**Query Parameters**
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| all | string | ❌ | When `"true"` and user is admin, includes inactive categories |
+
+**Response 200**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "_id": "64f1a2b3c4d5e6f7a8b9c0d1",
+      "name": "Hostel Maintenance",
+      "description": "Plumbing, electrical, and furniture issues in hostels",
+      "department": "Hostel",
+      "defaultHandler": {
+        "_id": "64f1a2b3c4d5e6f7a8b9c0d2",
+        "name": "Warden Office"
+      },
+      "isActive": true,
+      "createdAt": "2026-09-30T00:00:00.000Z",
+      "updatedAt": "2026-09-30T00:00:00.000Z"
+    }
+  ]
+}
+```
+
+**Errors**
+| Code | Reason |
+|---|---|
+| 401 | Unauthenticated |
+
+---
+
+## POST /api/categories
+
+**Auth:** Bearer JWT (admin only)  
+**Description:** Creates a new category with a unique name and optional default handler (must be an active officer).
+
+**Request body**
+| Field | Type | Required | Description |
+|---|---|---|---|
+| name | string | ✅ | Unique category name |
+| department | string | ✅ | Responsible department name |
+| description | string | ❌ | Category description (default: "") |
+| defaultHandler | string (ObjectId) | ❌ | ID of active user with officer role |
+
+**Response 201** — created category object with populated `defaultHandler` (`_id`, `name`)
+
+**Errors**
+| Code | Reason |
+|---|---|
+| 400 | Validation error (missing required field, handler not an active officer) |
+| 401 | Unauthenticated |
+| 403 | Forbidden (non-admin) |
+| 409 | Category name already exists |
+
+---
+
+## PATCH /api/categories/:id
+
+**Auth:** Bearer JWT (admin only)  
+**Description:** Updates category fields (`name`, `description`, `department`, `defaultHandler`, `isActive`).
+
+**Request body**
+| Field | Type | Required | Description |
+|---|---|---|---|
+| name | string | ❌ | Unique category name |
+| department | string | ❌ | Department name |
+| description | string | ❌ | Category description |
+| defaultHandler | string (ObjectId) / null | ❌ | Active officer ID or null to clear |
+| isActive | boolean | ❌ | Active status flag |
+
+**Response 200** — updated category object with populated `defaultHandler` (`_id`, `name`)
+
+**Errors**
+| Code | Reason |
+|---|---|
+| 400 | Validation error or invalid ID |
+| 401 | Unauthenticated |
+| 403 | Forbidden (non-admin) |
+| 404 | Category not found |
+| 409 | Renaming to an already existing category name |
+
+---
+
+## DELETE /api/categories/:id
+
+**Auth:** Bearer JWT (admin only)  
+**Description:** Soft-deletes a category by setting `isActive: false`. Existing complaints keep their references.
+
+**Response 200** — category object with `isActive: false`
+
+**Errors**
+| Code | Reason |
+|---|---|
+| 400 | Invalid ID format |
+| 401 | Unauthenticated |
+| 403 | Forbidden (non-admin) |
+| 404 | Category not found |
+
+---
+
+## GET /api/users
+
+**Auth:** Bearer JWT (admin only)  
+**Description:** Returns paginated list of users with filtering and regex-safe search.
+
+**Query Parameters**
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| page | number | ❌ | Page number (default: 1) |
+| limit | number | ❌ | Page size (default: 10, max: 50) |
+| role | string | ❌ | Filter by role (`student`, `staff`, `officer`, `admin`) |
+| department | string | ❌ | Filter by department |
+| isActive | string | ❌ | Filter by status (`"true"` or `"false"`) |
+| search | string | ❌ | Case-insensitive regex-escaped search on name and email |
+
+**Response 200**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "_id": "64f1a2b3c4d5e6f7a8b9c0d3",
+      "name": "Prof. Rao",
+      "email": "officer.hostel@campus.edu",
+      "role": "officer",
+      "department": "Hostel",
+      "isActive": true,
+      "createdAt": "2026-09-30T00:00:00.000Z",
+      "updatedAt": "2026-09-30T00:00:00.000Z"
+    }
+  ],
+  "meta": {
+    "page": 1,
+    "limit": 10,
+    "total": 1,
+    "totalPages": 1
+  }
+}
+```
+
+**Errors**
+| Code | Reason |
+|---|---|
+| 401 | Unauthenticated |
+| 403 | Forbidden (non-admin) |
+
+---
+
+## POST /api/users
+
+**Auth:** Bearer JWT (admin only)  
+**Description:** Creates a user of any role with a temporary password. Department is required for officers.
+
+**Request body**
+| Field | Type | Required | Description |
+|---|---|---|---|
+| name | string | ✅ | Full name |
+| email | string | ✅ | Unique valid email address |
+| password | string | ✅ | Temporary password (min 8 chars, ≥1 letter, ≥1 number) |
+| role | string | ✅ | One of `student`, `staff`, `officer`, `admin` |
+| department | string | Optional (✅ for officer) | Department assignment |
+
+**Response 201** — created user object (without `passwordHash`)
+
+**Errors**
+| Code | Reason |
+|---|---|
+| 400 | Validation error (e.g. weak password, missing department for officer) |
+| 401 | Unauthenticated |
+| 403 | Forbidden (non-admin) |
+| 409 | Email already exists |
+
+---
+
+## PATCH /api/users/:id
+
+**Auth:** Bearer JWT (admin only)  
+**Description:** Updates a user's details (`role`, `department`, `isActive`, `name`). Protected by self-action and last-admin safety guards.
+
+**Request body**
+| Field | Type | Required | Description |
+|---|---|---|---|
+| name | string | ❌ | Full name |
+| role | string | ❌ | One of `student`, `staff`, `officer`, `admin` |
+| department | string | ❌ | Department (required if role is officer) |
+| isActive | boolean | ❌ | Active status flag |
+
+**Response 200** — updated user object
+
+**Errors**
+| Code | Reason |
+|---|---|
+| 400 | Validation error, invalid ID, or missing department when role is officer |
+| 401 | Unauthenticated |
+| 403 | Forbidden (non-admin) |
+| 404 | User not found |
+| 409 | Admin self-deactivation/demotion, or attempting to demote/deactivate the last remaining active admin |
+
+---
+
+## GET /api/users/officers
+
+**Auth:** Bearer JWT (officer or admin)  
+**Description:** Retrieves active officers for assignment dropdowns. Officers can only view officers in their own department; admins can view all or filter with `?department=`.
+
+**Query Parameters**
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| department | string | ❌ | Filter by department (used by admin; officers are always locked to own department) |
+
+**Response 200**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "_id": "64f1a2b3c4d5e6f7a8b9c0d3",
+      "name": "Prof. Rao",
+      "email": "officer.hostel@campus.edu",
+      "department": "Hostel"
+    }
+  ]
+}
+```
+
+**Errors**
+| Code | Reason |
+|---|---|
+| 401 | Unauthenticated |
+| 403 | Forbidden (student/staff role) |
 
