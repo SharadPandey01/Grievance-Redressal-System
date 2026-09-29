@@ -5,6 +5,9 @@ const mongoose = require('mongoose');
 const config = require('./config/env');
 const notFound = require('./middleware/notFound');
 const errorHandler = require('./middleware/errorHandler');
+const authRoutes = require('./routes/auth.routes');
+const { authenticate, authorize } = require('./middleware/auth');
+const { sendSuccess } = require('./utils/response');
 
 const app = express();
 
@@ -29,6 +32,17 @@ app.get('/api/health', (req, res) => {
     },
   });
 });
+
+app.use('/api/auth', authRoutes);
+
+if (config.nodeEnv === 'test') {
+  app.get(
+    '/api/_debug/officer-only',
+    authenticate,
+    authorize('officer', 'admin'),
+    (req, res) => sendSuccess(res, { role: req.user.role })
+  );
+}
 
 app.use(notFound);
 app.use(errorHandler);

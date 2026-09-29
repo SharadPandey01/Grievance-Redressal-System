@@ -67,3 +67,29 @@
 ### Verification
 `node scripts/verify-models.js` → **15 PASS, 0 FAIL**
 
+---
+
+## 2026-09-30 | Prompt 3 — Authentication + RBAC
+
+### What was built
+- **src/validators/auth.validators.js**: `validateRegister`, `validateLogin`, `validateUpdateMe`, `validateChangePassword`; shared `isValidPassword` (min 8, ≥1 letter, ≥1 number)
+- **src/middleware/auth.js**: `authenticate` (verify Bearer JWT, DB-load user, reject missing/inactive); `authorize(...roles)` factory returning a role-check middleware
+- **src/services/authService.js**: `register` (domain check, bcrypt cost 10), `login` (generic "Invalid credentials" message), `updateMe`, `changePassword`
+- **src/controllers/authController.js**: thin handlers delegating to authService
+- **src/routes/auth.routes.js**: 5 endpoints + 20 req/15 min rate limiter on public routes
+- **src/app.js**: mounts `/api/auth`; registers test-only `/api/_debug/officer-only` when `NODE_ENV=test`
+- **scripts/smoke-auth.js**: 19-check live smoke test using Node 18 built-in fetch
+
+### Decisions
+- Identical "Invalid credentials" message for wrong email and wrong password prevents email enumeration attacks
+- `passwordHash` has `select: false` at schema level; `authService.login` explicitly adds `.select('+passwordHash')` — the only place it's ever retrieved
+- Rate limiter on register/login only — authenticated endpoints are protected by JWT, which is harder to brute-force
+- Debug route guarded by `NODE_ENV === 'test'` — never registered in production or development
+
+### Known Gaps
+- No `PATCH /api/auth/me` or `POST /api/auth/change-password` smoke coverage yet — added to integration test list for B8
+
+### Verification
+`node scripts/smoke-auth.js` (with server running `NODE_ENV=test`) → **19 PASS, 0 FAIL**
+
+
