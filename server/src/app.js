@@ -11,6 +11,7 @@ const authRoutes = require('./routes/auth.routes');
 const categoryRoutes = require('./routes/category.routes');
 const userRoutes = require('./routes/user.routes');
 const complaintRoutes = require('./routes/complaint.routes');
+const analyticsRoutes = require('./routes/analytics.routes');
 const { authenticate, authorize } = require('./middleware/auth');
 const { sendSuccess } = require('./utils/response');
 
@@ -48,6 +49,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/complaints', complaintRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 if (config.nodeEnv === 'test') {
   app.get(

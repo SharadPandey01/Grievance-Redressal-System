@@ -23,6 +23,8 @@ const {
   reopen,
   submitFeedback,
 } = require('../controllers/workflowController');
+const { listComments, postComment } = require('../controllers/commentController');
+const { validateCreateComment } = require('../validators/comment.validators');
 const { COMPLAINANT_ROLES } = require('../constants');
 
 // All complaint routes require authentication
@@ -78,6 +80,11 @@ router.post(
 // ── GET /api/complaints/:id ──────────────────────────────────────────────────
 // Must come after all /:id/<action> routes so Express matches specific paths first
 router.get('/:id', getComplaintById);
+
+// ── GET  /api/complaints/:id/comments ───────────────────────────────────────
+// ── POST /api/complaints/:id/comments ───────────────────────────────────────
+router.get('/:id/comments', listComments);
+router.post('/:id/comments', validateBody(validateCreateComment), postComment);
 
 // ── GET /api/complaints/:id/attachments/:filename ───────────────────────────
 router.get('/:id/attachments/:filename', downloadAttachment);

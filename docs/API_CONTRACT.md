@@ -95,6 +95,10 @@ Token payload: `{ id, role }`. Expires in 7 days.
 | POST | /api/complaints/:id/verify | Bearer JWT (owner) | Confirm resolution: Resolved→Closed |
 | POST | /api/complaints/:id/reopen | Bearer JWT (owner) | Reopen: Resolved→In Progress |
 | POST | /api/complaints/:id/feedback | Bearer JWT (owner) | Submit star rating + comment after Closed |
+| GET | /api/complaints/:id/comments | Bearer JWT | List comments (complainants exclude internal) |
+| POST | /api/complaints/:id/comments | Bearer JWT | Post a comment; isInternal officer/admin only |
+| GET | /api/analytics/summary | Bearer JWT (admin) | Global aggregated analytics |
+| GET | /api/analytics/my-summary | Bearer JWT | Role-aware personal analytics |
 
 > Rate limit on register and login: 20 requests / 15 min / IP.
 
@@ -841,4 +845,169 @@ The detail endpoint now includes two extra fields computed for the **requesting 
 | `feedback` | Owner, status is Closed, no feedback submitted yet |
 
 The frontend should render action buttons **exclusively** from this list and not hard-code any status checks.
+
+---
+
+## GET /api/complaints/:id/comments
+
+**Auth:** Bearer JWT (same access rules as GET /api/complaints/:id — `assertCanView`)  
+**Description:** Returns all comments on the complaint in ascending chronological order.
+
+Access rules:
+- Complainants (`student`, `staff`) **never** receive `isInternal: true` comments.
+- If the complaint is `isAnonymous: true`, comments authored by the complainant are returned with `author.name = "Anonymous"` to everyone except the complaint owner.
+- Each comment includes `author: { _id, name, role }`.
+
+**Response 200**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "_id": "...",
+      "complaint": "<complaintId>",
+      "author": { "_id": "...", "name": "Jane Doe", "role": "student" },
+      "text": "The fan has been broken for two days.",
+      "isInternal": false,
+      "createdAt": "...",
+      "updatedAt": "..."
+    }
+  ]
+}
+```
+
+**Errors**
+| Code | Reason |
+|---|---|
+| 401 | Unauthenticated |
+| 403 | No access to the complaint |
+| 404 | Complaint not found |
+
+---
+
+## POST /api/complaints/:id/comments
+
+**Auth:** Bearer JWT (same access rules as GET /api/complaints/:id)  
+**Description:** Add a comment to the complaint thread.
+
+Rules:
+- Complaints with status `Closed` reject new comments → 409.
+- `isInternal: true` is only allowed for `officer` and `admin`. Complainants who set it → 403.
+- Complainants always have `isInternal` forced to `false` regardless of the body value.
+
+**Request body**
+```json
+{ "text": "Responding to the issue (1–1000 chars)", "isInternal": false }
+```
+
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| text | string | ✅ | 1–1000 characters |
+| isInternal | boolean | ❌ | Default false; officer/admin only for true |
+
+**Response 201** — created comment (populated author)
+
+**Errors**
+| Code | Reason |
+|---|---|
+| 400 | `text` outside 1–1000 characters; `isInternal` not a boolean |
+| 401 | Unauthenticated |
+| 403 | No access to the complaint; or complainant attempting `isInternal: true` |
+| 404 | Complaint not found |
+| 409 | Complaint is Closed |
+
+---
+
+## GET /api/analytics/summary
+
+**Auth:** Bearer JWT (admin only)  
+**Description:** Global aggregated analytics across all complaints.
+
+**Response 200**
+```json
+{
+  "success": true,
+  "data": {
+    "totals": {
+      "all": 42, "open": 18, "resolved": 10, "closed": 14, "overdue": 3
+    },
+    "byStatus": [
+      { "status": "Submitted", "count": 5 },
+      { "status": "Acknowledged", "count": 6 },
+      { "status": "In Progress", "count": 7 },
+      { "status": "Resolved", "count": 10 },
+      { "status": "Closed", "count": 14 }
+    ],
+    "byCategory": [{ "name": "Hostel", "count": 20 }, ...],
+    "byDepartment": [{ "department": "Hostel", "count": 20 }, ...],
+    "byPriority": [
+      { "priority": "High", "count": 5 },
+      { "priority": "Medium", "count": 30 },
+      { "priority": "Low", "count": 7 }
+    ],
+    "monthlyTrend": [
+      { "month": "2026-04", "created": 8, "resolved": 3 },
+      ...
+    ],
+    "avgResolutionHours": 47.3,
+    "avgRating": 3.8,
+    "reopenRate": 11.9
+  }
+}
+```
+
+**Notes:**
+- All statuses and priorities are always present in their arrays (zero-filled) — charts never have gaps.
+- `monthlyTrend` always has exactly **6 entries** (last 6 calendar months, oldest first).
+- `avgResolutionHours`: mean of `(resolvedAt - createdAt)` in hours, over Resolved and Closed complaints.
+- `reopenRate`: percentage (0–100, one decimal) of all complaints where `reopenCount > 0`.
+
+**Errors**
+| Code | Reason |
+|---|---|
+| 401 | Unauthenticated |
+| 403 | Not an admin |
+
+---
+
+## GET /api/analytics/my-summary
+
+**Auth:** Bearer JWT (any authenticated user)  
+**Description:** Role-aware personal analytics. Shape differs by role.
+
+### Complainant (student / staff)
+```json
+{
+  "byStatus": [
+    { "status": "Submitted", "count": 2 },
+    { "status": "Acknowledged", "count": 1 },
+    { "status": "In Progress", "count": 0 },
+    { "status": "Resolved", "count": 1 },
+    { "status": "Closed", "count": 3 }
+  ],
+  "awaitingVerification": 1
+}
+```
+- `byStatus`: counts of **own** complaints by status (all 5 statuses, zero-filled).
+- `awaitingVerification`: count of own Resolved complaints (action required from the complainant).
+
+### Officer
+```json
+{
+  "byStatus": [...],
+  "overdue": 2,
+  "unassignedPool": 5
+}
+```
+- `byStatus`: counts of **assigned** complaints by status.
+- `overdue`: assigned open complaints where `dueAt < now`.
+- `unassignedPool`: unassigned open complaints whose category belongs to the officer's department.
+
+### Admin
+Same shape as complainant but counts are **global** (all complaints, not scoped to a user).
+
+**Errors**
+| Code | Reason |
+|---|---|
+| 401 | Unauthenticated |
 

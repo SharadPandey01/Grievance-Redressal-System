@@ -198,3 +198,33 @@ All files verified by static review. Smoke script ready to run once `.env` is co
 ### Verification
 - `node --check` passes on all 6 new/modified files
 - Smoke test (`node scripts/smoke-workflow.js`) ready to run with server on `NODE_ENV=test` + seeded DB
+
+---
+
+## 2026-09-30 | Prompt 7 — Comments and Analytics
+
+### What was built
+- **server/src/services/commentService.js**:
+  - `listComments(user, complaint)` — ascending order; strips `isInternal` comments for complainants; applies anonymous masking (`maskCommentAuthor`) per comment
+  - `postComment(user, complaint, { text, isInternal })` — rejects Closed (409); enforces complainant cannot set `isInternal: true` (403); forces `isInternal` false for complainants regardless
+- **server/src/services/analyticsService.js**:
+  - `getSummary()` — 11 concurrent aggregations: status counts, overdue, byCategory (lookup), byDepartment (lookup), byPriority, createdByMonth (last 6), resolvedByMonth (last 6), avgResolutionHours, avgRating, totalCount, reopenedCount. All missing months/statuses/priorities zero-filled.
+  - `getMySummary(user)` — dispatches to `complainantSummary`, `officerSummary`, or `adminMySummary` by role; officer summary includes `unassignedPool` via category-department join
+- **server/src/controllers/commentController.js**: Loads complaint once (with `category` populated for `assertCanView`), delegates to service
+- **server/src/controllers/analyticsController.js**: Thin wrappers for `getSummary` (admin) and `getMySummary` (any auth)
+- **server/src/validators/comment.validators.js**: `text` 1–1000, `isInternal` boolean type check
+- **server/src/routes/complaint.routes.js**: Added `GET /:id/comments` and `POST /:id/comments` (placed after `/:id` — specific before wildcard)
+- **server/src/routes/analytics.routes.js**: `GET /summary` (admin) and `GET /my-summary` (any auth)
+- **server/src/app.js**: Mounted `/api/analytics`
+- **server/scripts/smoke-comments-analytics.js**: 5-section smoke test with 35+ assertions
+
+### Decisions
+- `maskCommentAuthor` mutates the `author` field in-place on the plain JS object (lean); never touches the DB document
+- Anonymous masking checks `filedBy` against `author._id` — if the complainant wrote the comment and the requester is not the owner, the name is replaced; the `_id` is kept so the frontend can still use it for UI identity if needed
+- `analyticsService.getSummary` fires all 11 aggregations via `Promise.all` — no sequential bottleneck
+- `lastNMonths(6)` generates calendar-month labels in the server's local timezone; `$dateToString` in MongoDB uses UTC. Both consistent as long as the server doesn't straddle midnight timezone boundaries (acceptable for a campus system)
+- `unassignedPool` counts complaints with `assignedTo: null` in any active category belonging to the officer's `department` — this is the "triage inbox" the officer sees on their dashboard
+
+### Verification
+- `node --check` passes on all 9 new/modified files
+- Smoke test ready: `node scripts/smoke-comments-analytics.js` (server on `NODE_ENV=test`, DB seeded)
