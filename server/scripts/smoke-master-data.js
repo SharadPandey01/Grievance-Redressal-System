@@ -163,7 +163,7 @@ async function run() {
   }, adminToken);
   check('Duplicate category name returns 409', r.status === 409);
 
-  // 6. Admin creates second category
+  // Admin creates second category
   const catName2 = 'Smoke Category IT ' + Date.now();
   r = await post('/categories', {
     name: catName2,
@@ -174,54 +174,53 @@ async function run() {
   check('Admin creates 2nd category returns 201', r.status === 201);
   const category2 = r.body.data;
 
-  // 7. Student GET /api/categories -> active only, sorted by name
+  // Student GET /api/categories -> active only, sorted by name
   r = await get('/categories', studentToken);
   check('Student GET /categories returns 200', r.status === 200);
   check('Categories list is array', Array.isArray(r.body.data));
   const activeCountBefore = r.body.data.length;
 
-  // 8. Admin PATCH /api/categories/:id
+  // Admin PATCH /api/categories/:id
   r = await patch(`/categories/${category1._id}`, {
     description: 'Updated hostel description',
   }, adminToken);
   check('Admin updates category description returns 200', r.status === 200);
   check('Description updated', r.body.data?.description === 'Updated hostel description');
 
-  // 9. Admin PATCH /api/categories/:id rename to existing name -> 409
+  // Admin PATCH /api/categories/:id rename to existing name -> 409
   r = await patch(`/categories/${category1._id}`, {
     name: catName2,
   }, adminToken);
   check('Rename category to existing name returns 409', r.status === 409);
 
-  // 10. Non-admin DELETE /api/categories/:id -> 403
+  // Non-admin DELETE /api/categories/:id -> 403
   r = await del(`/categories/${category1._id}`, studentToken);
   check('Student cannot delete category (403)', r.status === 403);
 
-  // 11. Admin DELETE /api/categories/:id (soft delete) -> 200
+  // Admin DELETE /api/categories/:id (soft delete) -> 200
   r = await del(`/categories/${category1._id}`, adminToken);
   check('Admin soft-deletes category returns 200', r.status === 200);
   check('Soft-deleted category has isActive=false', r.body.data?.isActive === false);
 
-  // 12. Student GET /categories excludes inactive category
+  // Student GET /categories excludes inactive category
   r = await get('/categories', studentToken);
   check('Student does not see soft-deleted category', !r.body.data.some((c) => c._id === category1._id));
 
-  // 13. Student GET /categories?all=true still only receives active
+  // Student GET /categories?all=true still only receives active
   r = await get('/categories?all=true', studentToken);
   check('Student with ?all=true still sees only active categories', !r.body.data.some((c) => c._id === category1._id));
 
-  // 14. Admin GET /categories?all=true includes inactive category
+  // Admin GET /categories?all=true includes inactive category
   r = await get('/categories?all=true', adminToken);
   check('Admin with ?all=true sees deactivated category', r.body.data.some((c) => c._id === category1._id));
 
-  // ================= USERS TESTS =================
   console.log('\n-- User Endpoints --\n');
 
-  // 15. Student POST /api/users -> 403
+  // Student POST /api/users -> 403
   r = await post('/users', { name: 'Denied', email: 'd@campus.edu', password: 'Password1', role: 'student' }, studentToken);
   check('Student cannot create user (403)', r.status === 403);
 
-  // 16. Admin POST /api/users officer without department -> 400
+  // Admin POST /api/users officer without department -> 400
   r = await post('/users', {
     name: 'Officer No Dept',
     email: `smoke.md.officer.nodept.${Date.now()}@campus.edu`,
@@ -230,7 +229,7 @@ async function run() {
   }, adminToken);
   check('Create officer without department returns 400', r.status === 400);
 
-  // 17. Admin POST /api/users valid officer -> 201
+  // Admin POST /api/users valid officer -> 201
   const newOfficerEmail = `smoke.md.officer.new+special.${Date.now()}@campus.edu`;
   r = await post('/users', {
     name: 'Smoke MD NewOfficer',
@@ -243,7 +242,7 @@ async function run() {
   check('Created user has no passwordHash', !r.body.data?.passwordHash);
   const createdOfficer = r.body.data;
 
-  // 18. Admin POST /api/users duplicate email -> 409
+  // Admin POST /api/users duplicate email -> 409
   r = await post('/users', {
     name: 'Duplicate Officer',
     email: newOfficerEmail,
@@ -252,33 +251,29 @@ async function run() {
   }, adminToken);
   check('Create user with duplicate email returns 409', r.status === 409);
 
-  // 19. Admin GET /api/users paginated with search regex escaping
+  // Admin GET /api/users paginated with search regex escaping
   r = await get(`/users?search=${encodeURIComponent('new+special')}`, adminToken);
   check('GET /users with regex special characters returns 200', r.status === 200);
   check('Search matches the created officer', r.body.data?.some((u) => u._id === createdOfficer._id));
   check('Response has pagination meta', typeof r.body.meta?.totalPages === 'number');
 
-  // 20. Admin GET /api/users filter by role & department
+  // Admin GET /api/users filter by role & department
   r = await get('/users?role=officer&department=Sports', adminToken);
   check('Filter by role and department returns 200', r.status === 200);
   check('Filter includes only Sports officers', r.body.data?.every((u) => u.department === 'Sports' && u.role === 'officer'));
 
-  // 21. Non-admin GET /api/users -> 403
+  // Non-admin GET /api/users -> 403
   r = await get('/users', studentToken);
   check('Student cannot access GET /users (403)', r.status === 403);
 
-  // 22. Admin self-deactivation guard -> 409
+  // Admin self-deactivation guard -> 409
   r = await patch(`/users/${adminUser._id}`, { isActive: false }, adminToken);
   check('Admin deactivating themself returns 409', r.status === 409);
 
-  // 23. Admin self-demotion guard -> 409
+  // Admin self-demotion guard -> 409
   r = await patch(`/users/${adminUser._id}`, { role: 'student' }, adminToken);
   check('Admin demoting themself returns 409', r.status === 409);
 
-  // 24. Last active admin guard
-  // Currently adminUser is the only active admin with smoke.md prefix. But in whole DB, let's verify:
-  // If we create a 2nd admin, we can deactivate that 2nd admin.
-  // Then when 1 active admin remains, deactivating that last admin returns 409.
   const admin2Email = `smoke.md.admin2.${Date.now()}@campus.edu`;
   r = await post('/users', {
     name: 'Smoke Second Admin',
@@ -325,11 +320,10 @@ async function run() {
   r = await patch(`/users/${secondAdmin._id}`, { role: 'student' }, secondAdminToken);
   check('Demoting the last remaining active admin returns 409', r.status === 409);
 
-  // Restore temporarily deactivated admins
   await User.updateMany({ _id: { $in: temporarilyDeactivatedIds } }, { isActive: true });
   await User.findByIdAndUpdate(adminUser._id, { isActive: true });
 
-  // 25. Officer dropdown: GET /api/users/officers
+  // Officer dropdown: GET /api/users/officers
   // Student cannot access -> 403
   r = await get('/users/officers', studentToken);
   check('Student cannot access /users/officers (403)', r.status === 403);
