@@ -88,8 +88,13 @@ Token payload: `{ id, role }`. Expires in 7 days.
 | GET | /api/users/officers | Bearer JWT (officer, admin) | Active officers for assignment dropdown |
 | POST | /api/complaints | Bearer JWT (student, staff) | File a new complaint (multipart/form-data) |
 | GET | /api/complaints | Bearer JWT | List complaints (role-scoped, paginated) |
-| GET | /api/complaints/:id | Bearer JWT | Full complaint detail with logs, attachments, feedback |
+| GET | /api/complaints/:id | Bearer JWT | Full complaint detail with logs, attachments, feedback, allowedActions |
 | GET | /api/complaints/:id/attachments/:filename | Bearer JWT | Stream/download one attachment file |
+| PATCH | /api/complaints/:id/assign | Bearer JWT (officer, admin) | Assign or reassign complaint to an officer |
+| PATCH | /api/complaints/:id/status | Bearer JWT | Advance status: Acknowledged→In Progress or In Progress→Resolved |
+| POST | /api/complaints/:id/verify | Bearer JWT (owner) | Confirm resolution: Resolved→Closed |
+| POST | /api/complaints/:id/reopen | Bearer JWT (owner) | Reopen: Resolved→In Progress |
+| POST | /api/complaints/:id/feedback | Bearer JWT (owner) | Submit star rating + comment after Closed |
 
 > Rate limit on register and login: 20 requests / 15 min / IP.
 
@@ -667,4 +672,173 @@ Headers: `Content-Type: <mimetype>`, `Content-Disposition: attachment; filename=
 | 401 | Unauthenticated |
 | 403 | No access to the complaint |
 | 404 | Complaint not found, or filename is not in this complaint's attachments list |
+
+---
+
+## PATCH /api/complaints/:id/assign
+
+**Auth:** Bearer JWT (officer or admin)  
+**Description:** Assign or reassign a complaint to an active officer.
+- **First assignment** (status = `Submitted`): promotes to `Acknowledged`, writes a Submitted→Acknowledged StatusLog.
+- **Reassignment**: keeps the current status, writes a same-status StatusLog with the note.
+- Closed complaints cannot be reassigned → 409.
+
+**Role rules:**
+- Officer: may assign to themselves or any active officer in their own department.
+- Admin: may assign to any active officer.
+
+**Request body**
+```json
+{ "assigneeId": "<ObjectId>", "note": "Optional context note" }
+```
+
+**Response 200** — updated complaint (populated)
+
+**Errors**
+| Code | Reason |
+|---|---|
+| 400 | `assigneeId` missing / not a valid ObjectId / target is not an active officer |
+| 401 | Unauthenticated |
+| 403 | Not an officer or admin; or officer trying to assign across departments |
+| 404 | Complaint not found |
+| 409 | Complaint is Closed; or concurrent state change (refresh and retry) |
+
+---
+
+## PATCH /api/complaints/:id/status
+
+**Auth:** Bearer JWT (assigned officer or admin only — enforced by service, not middleware)  
+**Description:** Advance the complaint status through the officer/admin path.
+
+Allowed transitions via this endpoint:
+- `Acknowledged` → `In Progress`
+- `In Progress` → `Resolved` (requires `resolutionNotes`)
+
+Sets `resolvedAt` when transitioning to `Resolved`.
+
+**Request body**
+```json
+{
+  "toStatus": "In Progress",
+  "note": "Starting investigation (3–500 chars)",
+  "resolutionNotes": "Required only when toStatus = Resolved (1–2000 chars)"
+}
+```
+
+**Response 200** — updated complaint (populated)
+
+**Errors**
+| Code | Reason |
+|---|---|
+| 400 | `toStatus` not one of `In Progress` / `Resolved`; note too short/long; `resolutionNotes` missing when resolving |
+| 401 | Unauthenticated |
+| 403 | Caller is not the assigned officer or an admin |
+| 404 | Complaint not found |
+| 409 | Transition not legal from current status; or concurrent update |
+
+---
+
+## POST /api/complaints/:id/verify
+
+**Auth:** Bearer JWT (complaint owner only)  
+**Description:** Complainant confirms the resolution is satisfactory. Transitions `Resolved → Closed`, sets `closedAt`.
+
+**Request body:** empty / no fields required
+
+**Response 200** — updated complaint
+
+**Errors**
+| Code | Reason |
+|---|---|
+| 401 | Unauthenticated |
+| 403 | Caller is not the complaint owner |
+| 404 | Complaint not found |
+| 409 | Complaint is not in `Resolved` status |
+
+---
+
+## POST /api/complaints/:id/reopen
+
+**Auth:** Bearer JWT (complaint owner only)  
+**Description:** Complainant is not satisfied with the resolution. Transitions `Resolved → In Progress`, increments `reopenCount`, clears `resolvedAt`. The reason is stored in the StatusLog note.
+
+**Request body**
+```json
+{ "reason": "Issue is still present after the fix (10–500 chars)" }
+```
+
+**Response 200** — updated complaint (`reopenCount` incremented)
+
+**Errors**
+| Code | Reason |
+|---|---|
+| 400 | `reason` missing or outside 10–500 characters |
+| 401 | Unauthenticated |
+| 403 | Caller is not the complaint owner |
+| 404 | Complaint not found |
+| 409 | Complaint is not in `Resolved` status |
+
+---
+
+## POST /api/complaints/:id/feedback
+
+**Auth:** Bearer JWT (complaint owner only)  
+**Description:** Complainant rates the resolution experience after the complaint is `Closed`. One submission per complaint — repeat → 409.
+
+**Request body**
+```json
+{ "rating": 4, "comment": "Optional comment up to 500 chars" }
+```
+
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| rating | integer | ✅ | 1–5 (inclusive) |
+| comment | string | ❌ | Max 500 characters |
+
+**Response 201** — feedback document
+```json
+{
+  "success": true,
+  "data": {
+    "_id": "...",
+    "complaint": "<complaintId>",
+    "rating": 4,
+    "comment": "Good resolution, thanks!",
+    "givenBy": "<userId>",
+    "createdAt": "..."
+  }
+}
+```
+
+**Errors**
+| Code | Reason |
+|---|---|
+| 400 | `rating` out of 1–5 range; `comment` too long |
+| 401 | Unauthenticated |
+| 403 | Caller is not the complaint owner |
+| 404 | Complaint not found |
+| 409 | Complaint is not `Closed`; or feedback already submitted |
+
+---
+
+## allowedActions / allowedNextStatuses (GET /api/complaints/:id extension)
+
+The detail endpoint now includes two extra fields computed for the **requesting user's** current role and the complaint's current status:
+
+```json
+{
+  "allowedActions": ["assign", "updateStatus"],
+  "allowedNextStatuses": ["In Progress"]
+}
+```
+
+| Action | When available |
+|---|---|
+| `assign` | Officer or admin, complaint not Closed |
+| `updateStatus` | Assigned officer or admin, status is Acknowledged or In Progress |
+| `verify` | Owner, status is Resolved |
+| `reopen` | Owner, status is Resolved |
+| `feedback` | Owner, status is Closed, no feedback submitted yet |
+
+The frontend should render action buttons **exclusively** from this list and not hard-code any status checks.
 

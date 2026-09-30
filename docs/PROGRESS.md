@@ -158,3 +158,43 @@
 ### Verification
 All files verified by static review. Smoke script ready to run once `.env` is configured and `npm run seed` is executed.
 
+---
+
+## 2026-09-30 | Prompt 6 — Workflow: Assign, Status, Verify, Reopen, Feedback, Auto-Close
+
+### What was built
+- **server/src/services/workflowService.js**: All complaint state transitions in one service:
+  - `toId(field)` imported from `complaintService` — no circular dependency
+  - `throwIfRace(updated)` — 409 when atomic update returns null (concurrent modification)
+  - `assignComplaint` — first assign (Submitted→Acknowledged) and reassign (same status); officer dept restriction
+  - `changeStatus` — Acknowledged→In Progress and In Progress→Resolved (with `resolvedAt`); assigned officer or admin only
+  - `verifyAndClose` — Resolved→Closed (owner only); sets `closedAt`
+  - `reopen` — Resolved→In Progress (owner only); `$inc reopenCount`, clears `resolvedAt`
+  - `submitFeedback` — Closed complaints only, one per complaint; duplicate → 11000 → errorHandler → 409
+  - `autoCloseResolved` — finds Resolved complaints older than `AUTO_CLOSE_DAYS`, closes them atomically, writes StatusLog changedBy=null
+  - `getAllowedActions(user, complaint, feedbackExists)` — computes `{allowedActions, allowedNextStatuses}` for the frontend
+- **server/src/controllers/workflowController.js**: Thin handler per endpoint, all logic in service
+- **server/src/routes/complaint.routes.js**: Added `PATCH /:id/assign`, `PATCH /:id/status`, `POST /:id/verify`, `POST /:id/reopen`, `POST /:id/feedback`; specific paths before `/:id` to prevent Express routing conflicts
+- **server/src/jobs/autoClose.js**: `node-cron` hourly schedule (`0 * * * *`); exports `startAutoCloseJob` and re-exports `autoCloseResolved` for direct test calls
+- **server/src/server.js**: Calls `startAutoCloseJob()` after `connectDB()` — never from app.js
+- **server/src/app.js**: Added two `NODE_ENV=test` debug endpoints:
+  - `PATCH /api/_debug/backdate/:id` — sets `resolvedAt` N days in the past (admin only)
+  - `POST /api/_debug/run-autoclose` — calls `autoCloseResolved()` on demand (admin only)
+- **server/src/services/complaintService.js**: `getComplaintById` now calls `getAllowedActions` (lazy require to break circular dep) and appends `allowedActions`/`allowedNextStatuses` to the response
+- **server/scripts/smoke-workflow.js**: 9-section live smoke test with 39 assertions covering the full lifecycle
+
+### Decisions
+- Atomic pattern: `findOneAndUpdate({ _id, status: currentStatus }, ...)` — if another request changed the status, `updated` is null → `throwIfRace` throws 409. No mongoose version-key (`__v`) needed.
+- `getAllowedActions` lives in `workflowService` (not `complaintService`) because it requires status knowledge and future workflow rule changes should all be in one file
+- Lazy `require('./workflowService')` inside `getComplaintById` body breaks the mutual-import cycle cleanly without restructuring files
+- `submitFeedback` relies on the Mongoose unique index on `Feedback.complaint` for the one-per-complaint guarantee; no explicit pre-check needed — the 11000 duplicate-key error hits `errorHandler` and becomes 409
+- The `reopen` function uses both `$set` and `$inc` in a single `findOneAndUpdate` — both operators apply atomically
+- Debug endpoints are registered only when `NODE_ENV=test` and guarded by `authorize('admin')` — safe from accidental exposure in production
+
+### Known Gaps
+- Smoke test requires a seeded DB with `student1@campus.edu`, `student2@campus.edu`, `officer.hostel@campus.edu`, `admin@campus.edu`
+- Officer cross-department assignment restriction tested via service logic; a full cross-dept test needs two officer accounts in different departments (available after B8 seed)
+
+### Verification
+- `node --check` passes on all 6 new/modified files
+- Smoke test (`node scripts/smoke-workflow.js`) ready to run with server on `NODE_ENV=test` + seeded DB

@@ -56,6 +56,37 @@ if (config.nodeEnv === 'test') {
     authorize('officer', 'admin'),
     (req, res) => sendSuccess(res, { role: req.user.role })
   );
+
+  // Backdate resolvedAt on a complaint so the auto-close smoke test can trigger it
+  app.patch(
+    '/api/_debug/backdate/:id',
+    authenticate,
+    authorize('admin'),
+    async (req, res) => {
+      const Complaint = require('./models/Complaint');
+      const days = parseInt(req.body.days, 10) || 8;
+      const resolvedAt = new Date();
+      resolvedAt.setDate(resolvedAt.getDate() - days);
+      const c = await Complaint.findByIdAndUpdate(
+        req.params.id,
+        { $set: { resolvedAt } },
+        { returnDocument: 'after' }
+      );
+      return sendSuccess(res, c);
+    }
+  );
+
+  // Trigger the auto-close job on demand (no waiting for the hourly cron)
+  app.post(
+    '/api/_debug/run-autoclose',
+    authenticate,
+    authorize('admin'),
+    async (req, res) => {
+      const { autoCloseResolved } = require('./jobs/autoClose');
+      const count = await autoCloseResolved();
+      return sendSuccess(res, { closed: count });
+    }
+  );
 }
 
 app.use(notFound);
