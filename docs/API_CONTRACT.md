@@ -86,6 +86,10 @@ Token payload: `{ id, role }`. Expires in 7 days.
 | POST | /api/users | Bearer JWT (admin) | Create user of any role with temporary password |
 | PATCH | /api/users/:id | Bearer JWT (admin) | Update user role, department, name, isActive |
 | GET | /api/users/officers | Bearer JWT (officer, admin) | Active officers for assignment dropdown |
+| POST | /api/complaints | Bearer JWT (student, staff) | File a new complaint (multipart/form-data) |
+| GET | /api/complaints | Bearer JWT | List complaints (role-scoped, paginated) |
+| GET | /api/complaints/:id | Bearer JWT | Full complaint detail with logs, attachments, feedback |
+| GET | /api/complaints/:id/attachments/:filename | Bearer JWT | Stream/download one attachment file |
 
 > Rate limit on register and login: 20 requests / 15 min / IP.
 
@@ -479,4 +483,188 @@ Token payload: `{ id, role }`. Expires in 7 days.
 |---|---|
 | 401 | Unauthenticated |
 | 403 | Forbidden (student/staff role) |
+
+---
+
+## POST /api/complaints
+
+**Auth:** Bearer JWT (student or staff only)  
+**Content-Type:** `multipart/form-data`  
+**Description:** Files a new complaint. `filedBy` is set from the JWT — the body cannot override it. If the category has an active `defaultHandler` officer, the complaint is immediately auto-assigned and promoted to `Acknowledged`.
+
+**Form fields**
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| title | string | ✅ | 5–120 characters |
+| description | string | ✅ | 20–2000 characters |
+| category | string (ObjectId) | ✅ | Must be an active category |
+| priority | string | ❌ | `Low`, `Medium` (default), `High` |
+| isAnonymous | string | ❌ | `"true"` or `"false"` (default `"false"`) |
+| files | file | ❌ | Up to 3 files; jpg/png/pdf; max 5 MB each; field name must be `files` |
+
+**Response 201** — created complaint object including `code`, `dueAt`, `status`, `attachments`
+```json
+{
+  "success": true,
+  "data": {
+    "_id": "...",
+    "code": "GRV-2026-0001",
+    "title": "Water leakage in hostel room 204",
+    "description": "...",
+    "category": "...",
+    "priority": "Medium",
+    "status": "Submitted",
+    "filedBy": "...",
+    "isAnonymous": false,
+    "assignedTo": null,
+    "attachments": [],
+    "dueAt": "2026-10-05T00:00:00.000Z",
+    "resolutionNotes": "",
+    "reopenCount": 0,
+    "createdAt": "...",
+    "updatedAt": "..."
+  }
+}
+```
+If auto-assigned: `status` = `"Acknowledged"` and `assignedTo` is populated.
+
+**Errors**
+| Code | Reason |
+|---|---|
+| 400 | Validation error on text fields (see `errors` array) |
+| 400 | Invalid/inactive category ID |
+| 400 | File type not allowed (only jpg, png, pdf) |
+| 400 | File too large (max 5 MB) |
+| 400 | Too many files (max 3) |
+| 401 | Unauthenticated |
+| 403 | Authenticated user is not a complainant (student/staff) |
+
+---
+
+## GET /api/complaints
+
+**Auth:** Bearer JWT (any role)  
+**Description:** Returns a paginated, role-scoped list of complaints.
+
+**Scoping rules**
+- **student / staff**: own complaints only (`filedBy === me`)
+- **officer**: `scope=assigned` (default) → assigned to me; `scope=unassigned` → unassigned in my department; `scope=all` → both
+- **admin**: all complaints
+
+**Query Parameters**
+| Parameter | Type | Description |
+|---|---|---|
+| page | number | Default 1 |
+| limit | number | Default 10, max 50 |
+| status | string | Filter by status value |
+| priority | string | Filter by `Low`, `Medium`, `High` |
+| category | string (ObjectId) | Filter by category ID |
+| assignedTo | string (ObjectId) | Filter by assigned officer ID |
+| search | string | Case-insensitive search on `title` and `code` |
+| overdue | string | `"true"` → only overdue complaints |
+| sort | string | `createdAt`, `dueAt`, `priority`; prefix `-` for descending. Default: `-createdAt` |
+| scope | string | Officer only: `assigned` (default), `unassigned`, `all` |
+
+**Anonymous masking**: anonymous complaints show `filedBy: null` and `filedByLabel: "Anonymous"` to officers and admins (except the owner who always sees their own name).
+
+**Response 200** — paginated list with `meta`
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "_id": "...",
+      "code": "GRV-2026-0001",
+      "title": "Water leakage in hostel room 204",
+      "status": "Submitted",
+      "priority": "Medium",
+      "isAnonymous": false,
+      "isOverdue": false,
+      "dueAt": "...",
+      "category": { "_id": "...", "name": "Hostel & Mess", "department": "Hostel Administration" },
+      "assignedTo": null,
+      "filedBy": { "_id": "...", "name": "Alice" },
+      "createdAt": "...",
+      "updatedAt": "..."
+    }
+  ],
+  "meta": { "page": 1, "limit": 10, "total": 42, "totalPages": 5 }
+}
+```
+
+**Errors**
+| Code | Reason |
+|---|---|
+| 401 | Unauthenticated |
+
+---
+
+## GET /api/complaints/:id
+
+**Auth:** Bearer JWT  
+**Description:** Returns the full detail of one complaint, including `statusLogs`, `feedback`, and `isOverdue`. The `allowedActions` and `allowedNextStatuses` fields will be added in B6.
+
+**Access rules** (403 if none match):
+- The complaint's owner (`filedBy`)
+- The assigned officer
+- Any officer in the same department as the complaint's category (if unassigned)
+- Any admin
+
+**Populated fields**: `category {name, department}`, `assignedTo {name, department}`, `filedBy {name}` (masked if anonymous), `statusLogs[].changedBy {name, role}` (null → `{ name: "System", role: null }`)
+
+**Response 200**
+```json
+{
+  "success": true,
+  "data": {
+    "_id": "...",
+    "code": "GRV-2026-0001",
+    "title": "...",
+    "description": "...",
+    "status": "Submitted",
+    "priority": "Medium",
+    "isAnonymous": false,
+    "isOverdue": false,
+    "dueAt": "...",
+    "resolutionNotes": "",
+    "reopenCount": 0,
+    "category": { "_id": "...", "name": "Hostel & Mess", "department": "Hostel Administration" },
+    "assignedTo": null,
+    "filedBy": { "_id": "...", "name": "Alice" },
+    "attachments": [
+      { "originalName": "photo.jpg", "filename": "abc123.jpg", "mimetype": "image/jpeg", "size": 204800 }
+    ],
+    "statusLogs": [
+      { "_id": "...", "fromStatus": null, "toStatus": "Submitted", "changedBy": { "name": "Alice", "role": "student" }, "note": "Complaint submitted", "timestamp": "..." }
+    ],
+    "feedback": null,
+    "createdAt": "...",
+    "updatedAt": "..."
+  }
+}
+```
+
+**Errors**
+| Code | Reason |
+|---|---|
+| 401 | Unauthenticated |
+| 403 | User does not have access to this complaint |
+| 404 | Complaint not found (invalid ObjectId or deleted) |
+
+---
+
+## GET /api/complaints/:id/attachments/:filename
+
+**Auth:** Bearer JWT (same access rules as GET /api/complaints/:id)  
+**Description:** Streams/downloads one attachment file. The `filename` parameter is the server-generated random filename stored in `complaint.attachments[].filename`.
+
+**Response 200** — binary file stream  
+Headers: `Content-Type: <mimetype>`, `Content-Disposition: attachment; filename="<originalName>"`
+
+**Errors**
+| Code | Reason |
+|---|---|
+| 401 | Unauthenticated |
+| 403 | No access to the complaint |
+| 404 | Complaint not found, or filename is not in this complaint's attachments list |
 

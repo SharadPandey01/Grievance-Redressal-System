@@ -120,4 +120,41 @@
 `node scripts/smoke-master-data.js` (with server running `NODE_ENV=test`) → **43 PASS, 0 FAIL**  
 `node scripts/smoke-auth.js` → **19 PASS, 0 FAIL**
 
+---
+
+## 2026-09-30 | Prompt 5 — Complaints: Create, List, Detail, Attachments
+
+### What was built
+- **server/src/middleware/upload.js**: Multer disk-storage middleware — 16-byte hex random filenames, absolute path resolved at module load (`path.resolve(config.uploadDir)`), MIME type check in `fileFilter` (jpg/png/pdf), per-file 5 MB and 3-file count limits; custom error with `err.status = 400` for MIME rejection
+- **server/src/validators/complaint.validators.js**: `validateCreateComplaint` — title 5-120, description 20-2000, valid ObjectId for category, optional priority enum check
+- **server/src/services/complaintService.js**: full service with:
+  - `toId(field)` helper — safely extracts a string ID from either a raw ObjectId or a populated sub-document (fixes `[object Object]` comparison bug)
+  - `canView(user, complaint)` / `assertCanView` — admin pass-through; owner always sees own; officer sees if assigned or if unassigned in same dept
+  - `applyFiledByMask` — sets `filedBy=null` and `filedByLabel="Anonymous"` for anonymous complaints viewed by non-owners
+  - `buildSort(sortParam)` — parses `-createdAt` / `dueAt` style strings
+  - `createComplaint` — sets code+dueAt via `Complaint.createWithCode`, writes Submitted StatusLog, auto-assigns when `category.defaultHandler` is an active officer (second log changedBy=null)
+  - `listComplaints` — full role-scoped query with scope param for officers, search, overdue, sort, pagination
+  - `getComplaintById` — full detail: statusLogs (null changedBy → `{name:"System"}`), feedback, masking
+  - `resolveAttachment` — path-traversal-safe filename lookup, returns absolute `path.resolve(...)` path
+- **server/src/controllers/complaintController.js**: thin wrappers; `downloadAttachment` uses `res.sendFile(absolutePath)` directly
+- **server/src/routes/complaint.routes.js**: multer before `validateBody` so files land before body validation; `/:id/attachments/:filename` after `/:id`
+- **server/src/app.js**: mounts `/api/complaints`, creates upload dir with `fs.mkdirSync` at startup
+- **server/src/middleware/errorHandler.js**: extended to handle `MulterError` codes (`LIMIT_FILE_SIZE`, `LIMIT_FILE_COUNT`) with friendly messages, and plain errors with `err.status = 400` (from fileFilter)
+- **server/scripts/smoke-complaints.js**: 15-check live smoke test covering valid create, validation errors, MIME/size rejection, officer forbidden, list scoping by role, anonymous masking, access denied (student B → student A), auto-assign, detail with statusLogs, invalid ObjectId → 404
+
+### Decisions
+- `toId()` helper used in `canView` instead of `.toString()` directly — populated Mongoose documents return `[object Object]` from `.toString()`; `.lean()` gives plain JS but populated nested docs still have `._id`
+- `upload.js` resolves `UPLOAD_ABS = path.resolve(config.uploadDir)` once at module load so multer destination is always absolute regardless of CWD at runtime
+- `resolveAttachment` uses `path.resolve` and `fs.existsSync` before handing path to `res.sendFile` — prevents path-traversal and gives a clean 404 if the file was deleted
+- Officers list: `scope=unassigned` pre-fetches category IDs for the department (a second DB query) rather than a `$lookup` aggregation — simpler, readable, acceptable at this scale
+- `isAnonymous` field is coerced from the string `"true"` because multipart/form-data sends all fields as strings
+- `allowedActions` / `allowedNextStatuses` left for B6 (workflow service)
+
+### Known Gaps
+- Smoke test requires a running server with a seeded DB (`npm run seed` — built in B8)
+- Auto-assign test is skipped with a warning if no category has a `defaultHandler` (seed not yet run)
+- `allowedActions` on GET /complaints/:id added in B6
+
+### Verification
+All files verified by static review. Smoke script ready to run once `.env` is configured and `npm run seed` is executed.
 

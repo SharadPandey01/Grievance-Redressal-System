@@ -39,8 +39,20 @@ function errorHandler(err, req, res, next) {
 
   if (err instanceof multer.MulterError) {
     statusCode = 400;
-    message = err.message || 'File upload error';
+    // LIMIT_FILE_SIZE → friendly message; other codes use multer's default message
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      message = `File too large. Maximum allowed size is 5 MB per file`;
+    } else if (err.code === 'LIMIT_FILE_COUNT') {
+      message = `Too many files. Maximum 3 files allowed`;
+    } else {
+      message = err.message || 'File upload error';
+    }
     return sendError(res, statusCode, message);
+  }
+
+  // Plain Error thrown from fileFilter (e.g. MIME type check) carries err.status = 400
+  if (err.status === 400 && err.message) {
+    return sendError(res, 400, err.message);
   }
 
   logger.error(`Unhandled error: ${err.stack}`);

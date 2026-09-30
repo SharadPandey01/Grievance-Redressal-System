@@ -2,14 +2,23 @@ const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
 const mongoose = require('mongoose');
+const fs = require('fs');
+const path = require('path');
 const config = require('./config/env');
 const notFound = require('./middleware/notFound');
 const errorHandler = require('./middleware/errorHandler');
 const authRoutes = require('./routes/auth.routes');
 const categoryRoutes = require('./routes/category.routes');
 const userRoutes = require('./routes/user.routes');
+const complaintRoutes = require('./routes/complaint.routes');
 const { authenticate, authorize } = require('./middleware/auth');
 const { sendSuccess } = require('./utils/response');
+
+// Ensure the upload directory exists before any request hits the upload middleware
+const uploadDir = path.resolve(config.uploadDir);
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
 
 const app = express();
 
@@ -38,6 +47,7 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/complaints', complaintRoutes);
 
 if (config.nodeEnv === 'test') {
   app.get(
