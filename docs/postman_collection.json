@@ -1,0 +1,445 @@
+{
+  "info": {
+    "name": "Campus Grievance System API",
+    "description": "Complete API collection for the Campus Complaint and Grievance Redressal System backend. Set the `token` variable after login to authenticate all requests.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "campus-grievance-api-v1"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000/api", "type": "string" },
+    { "key": "token",   "value": "",                          "type": "string",
+      "description": "Paste the JWT from POST /auth/login here" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "GET /health",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/health" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/auth/register" },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Alice Student\",\n  \"email\": \"alice@example.com\",\n  \"password\": \"Password@123\",\n  \"role\": \"student\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.token) {",
+                  "  pm.collectionVariables.set('token', json.data.token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/auth/login" },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"student1@campus.edu\",\n  \"password\": \"Password@123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Me (current user)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/auth/me" },
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+          }
+        },
+        {
+          "name": "Update Me",
+          "request": {
+            "method": "PATCH",
+            "url": { "raw": "{{baseUrl}}/auth/me" },
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Name\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/auth/change-password" },
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"Password@123\",\n  \"newPassword\": \"NewPassword@456\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Categories",
+      "item": [
+        {
+          "name": "List Active Categories",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/categories" },
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+          }
+        },
+        {
+          "name": "List All Categories (admin, ?all=true)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/categories?all=true" },
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+          }
+        },
+        {
+          "name": "Create Category (admin)",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/categories" },
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"New Category\",\n  \"description\": \"Category description\",\n  \"department\": \"Computer Centre\",\n  \"defaultHandler\": null\n}"
+            }
+          }
+        },
+        {
+          "name": "Update Category (admin)",
+          "request": {
+            "method": "PATCH",
+            "url": { "raw": "{{baseUrl}}/categories/:id", "variable": [{ "key": "id", "value": "CATEGORY_ID" }] },
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"isActive\": true,\n  \"name\": \"Updated Name\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Soft-Delete Category (admin)",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/categories/:id", "variable": [{ "key": "id", "value": "CATEGORY_ID" }] },
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users (admin)",
+      "item": [
+        {
+          "name": "List Users",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/users?page=1&limit=10" },
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+          }
+        },
+        {
+          "name": "List Users — filter by role",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/users?role=officer&department=Computer+Centre" },
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+          }
+        },
+        {
+          "name": "Create User (admin)",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/users" },
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"New Officer\",\n  \"email\": \"new.officer@campus.edu\",\n  \"password\": \"Password@123\",\n  \"role\": \"officer\",\n  \"department\": \"Computer Centre\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Update User (admin)",
+          "request": {
+            "method": "PATCH",
+            "url": { "raw": "{{baseUrl}}/users/:id", "variable": [{ "key": "id", "value": "USER_ID" }] },
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"isActive\": true,\n  \"name\": \"Updated Name\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Officers (dropdown)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/users/officers" },
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Complaints",
+      "item": [
+        {
+          "name": "File Complaint (student/staff — multipart)",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/complaints" },
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "title",       "value": "Broken fan in lab",                "type": "text" },
+                { "key": "description", "value": "The fan in Lab 2 has been broken for 3 days. Students cannot work in the heat.", "type": "text" },
+                { "key": "category",   "value": "CATEGORY_ID",                      "type": "text" },
+                { "key": "priority",   "value": "High",                              "type": "text" },
+                { "key": "isAnonymous","value": "false",                             "type": "text" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "List Complaints (role-scoped)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/complaints?page=1&limit=10&sort=-createdAt" },
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+          }
+        },
+        {
+          "name": "List Complaints — filters",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/complaints?status=In+Progress&priority=High&overdue=true&search=fan" },
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+          }
+        },
+        {
+          "name": "List Complaints — officer unassigned pool",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/complaints?scope=unassigned" },
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+          }
+        },
+        {
+          "name": "Get Complaint Detail",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/complaints/:id", "variable": [{ "key": "id", "value": "COMPLAINT_ID" }] },
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+          }
+        },
+        {
+          "name": "Download Attachment",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/complaints/:id/attachments/:filename",
+              "variable": [
+                { "key": "id",       "value": "COMPLAINT_ID" },
+                { "key": "filename", "value": "FILENAME.pdf"  }
+              ]
+            },
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Workflow",
+      "item": [
+        {
+          "name": "Assign Complaint (officer/admin)",
+          "request": {
+            "method": "PATCH",
+            "url": { "raw": "{{baseUrl}}/complaints/:id/assign", "variable": [{ "key": "id", "value": "COMPLAINT_ID" }] },
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"assigneeId\": \"OFFICER_USER_ID\",\n  \"note\": \"Assigning for investigation\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Update Status (officer/admin)",
+          "request": {
+            "method": "PATCH",
+            "url": { "raw": "{{baseUrl}}/complaints/:id/status", "variable": [{ "key": "id", "value": "COMPLAINT_ID" }] },
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"toStatus\": \"In Progress\",\n  \"note\": \"Investigating the root cause\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Resolve Complaint",
+          "request": {
+            "method": "PATCH",
+            "url": { "raw": "{{baseUrl}}/complaints/:id/status", "variable": [{ "key": "id", "value": "COMPLAINT_ID" }] },
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"toStatus\": \"Resolved\",\n  \"note\": \"Issue fixed\",\n  \"resolutionNotes\": \"The root cause was identified and permanently fixed.\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Verify and Close (owner)",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/complaints/:id/verify", "variable": [{ "key": "id", "value": "COMPLAINT_ID" }] },
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+          }
+        },
+        {
+          "name": "Reopen Complaint (owner)",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/complaints/:id/reopen", "variable": [{ "key": "id", "value": "COMPLAINT_ID" }] },
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"The issue has recurred after the fix was applied.\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Submit Feedback (owner, after Closed)",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/complaints/:id/feedback", "variable": [{ "key": "id", "value": "COMPLAINT_ID" }] },
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\": 4,\n  \"comment\": \"Resolved well but took longer than expected.\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Comments",
+      "item": [
+        {
+          "name": "List Comments",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/complaints/:id/comments", "variable": [{ "key": "id", "value": "COMPLAINT_ID" }] },
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+          }
+        },
+        {
+          "name": "Post Comment",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/complaints/:id/comments", "variable": [{ "key": "id", "value": "COMPLAINT_ID" }] },
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"We are looking into this issue.\",\n  \"isInternal\": false\n}"
+            }
+          }
+        },
+        {
+          "name": "Post Internal Note (officer/admin only)",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/complaints/:id/comments", "variable": [{ "key": "id", "value": "COMPLAINT_ID" }] },
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"Escalating to senior management — not for complainant view.\",\n  \"isInternal\": true\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Analytics",
+      "item": [
+        {
+          "name": "Global Summary (admin)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/analytics/summary" },
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+          }
+        },
+        {
+          "name": "My Summary (role-aware)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/analytics/my-summary" },
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+          }
+        }
+      ]
+    }
+  ]
+}
