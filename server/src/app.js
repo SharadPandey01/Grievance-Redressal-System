@@ -7,6 +7,7 @@ const path = require('path');
 const config = require('./config/env');
 const notFound = require('./middleware/notFound');
 const errorHandler = require('./middleware/errorHandler');
+const sanitize = require('./middleware/sanitize');
 const authRoutes = require('./routes/auth.routes');
 const categoryRoutes = require('./routes/category.routes');
 const userRoutes = require('./routes/user.routes');
@@ -31,6 +32,8 @@ app.use(cors({
 }));
 
 app.use(express.json({ limit: '1mb' }));
+app.use(sanitize); // strip MongoDB operator keys from body/query
+
 
 app.get('/api/health', (req, res) => {
   const dbState = mongoose.connection.readyState;
