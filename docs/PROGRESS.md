@@ -228,3 +228,47 @@ All files verified by static review. Smoke script ready to run once `.env` is co
 ### Verification
 - `node --check` passes on all 9 new/modified files
 - Smoke test ready: `node scripts/smoke-comments-analytics.js` (server on `NODE_ENV=test`, DB seeded)
+
+---
+
+## 2026-10-02 | Prompt F1 — Frontend Foundation & Reusable Design System
+
+### What was built
+- **client/ (Vite + React 18)**: Scaffolding with plain JavaScript and JSX. Configured Vite with `@tailwindcss/vite` (Tailwind v4) and React 18 plugin. Created `client/.env.example` and `client/.env` (`VITE_API_URL=http://localhost:5000/api`). Installed allowed dependencies: `react-router-dom`, `axios`, `tailwindcss`, `lucide-react`, `react-hot-toast`, `recharts`.
+- **src/lib/**:
+  - `constants.js`: Definitions for statuses, priorities, roles, role labels, and curated Tailwind color mappings for badges, borders, and dots.
+  - `format.js`: Date and time helpers (`formatDate`, `formatDateTime`, `timeAgo`, `daysBetween`) using native `Intl` and `Date` APIs.
+  - `classNames.js`: 5-line utility joining truthy class strings.
+- **src/api/**:
+  - `client.js`: Axios client with `baseURL` from env, request interceptor attaching token from `localStorage`, response interceptor redirecting to `/login` on 401 and normalizing API envelope errors (`{ message, status, errors }`).
+  - Resource modules: `auth.js`, `complaints.js` (including multipart form handling and attachment helpers), `categories.js`, `users.js`, `analytics.js`, `comments.js` strictly matching `docs/API_CONTRACT.md`.
+- **src/hooks/**:
+  - `useFetch.js`: Custom hook handling request cancellation to prevent race conditions, background polling on interval (`pollMs`), and window focus refresh.
+  - `useAuth.js`: Context hook accessing authenticated user state, login, logout, and role helpers.
+- **src/context/**:
+  - `authContextInstance.js` & `AuthContext.jsx`: State management with `token`, `user`, `role`, `loginUser`, and `logout`.
+- **src/components/ui/**: 18 hand-crafted, accessible Tailwind components:
+  - `Button`, `Input`, `Textarea`, `Select`, `Toggle`, `FormField`, `Card`, `Badge`, `StatusBadge`, `PriorityBadge`, `Modal` (Esc key, click-outside, focus lock), `ConfirmDialog`, `Spinner`, `Skeleton`, `EmptyState`, `Pagination`, `Tabs`, `StarRating` (interactive input + read-only score), `PageHeader`. Barrel export at `components/ui/index.js`.
+- **src/components/layout/**:
+  - `AppLayout.jsx`: Responsive layout with desktop sidebar, mobile slide-in drawer with backdrop, sticky top bar, user menu, and role-aware navigation (`student`/`staff`, `officer`, `admin`).
+- **src/routes/AppRoutes.jsx & src/pages/**:
+  - `UiKitPage.jsx` at `/ui-kit`: Full visual preview and interactive testbed for all 18 UI components + active role simulator.
+  - `DashboardPage.jsx` at `/`: Overview and link to UI Kit.
+  - `PlaceholderPage.jsx` for remaining routes.
+  - `<Toaster />` from `react-hot-toast` mounted at root with customized styling.
+
+### Decisions
+- Adopted Tailwind CSS v4 using the official `@tailwindcss/vite` plugin and modern CSS `@import "tailwindcss"` with `@layer base` for clean system font styling.
+- Separated `authContextInstance.js` from `AuthContext.jsx` and `useAuth.js` to satisfy Fast Refresh and oxlint component-only export constraints.
+- `useFetch` leverages an effect cancellation flag and request counter to ensure out-of-order async responses never overwrite newer state.
+- Form inputs and controls use slate neutrals and indigo-600 accents with accessible focus rings and rose-600 validation feedback.
+
+### Known Gaps
+- Interactive browser subagent was blocked by an external Playwright driver CDN 404 in the sandbox; manual HTTP verification confirmed successful HTML/asset serving at `http://localhost:5173/`.
+- Full auth forms and complaint forms will be implemented in F2 and F3.
+
+### Verification
+- `npm run build` in `/client`: **PASS** (1978 modules, 380ms).
+- `npm run lint` in `/client`: **PASS** (0 warnings, 0 errors across 42 files).
+- HTTP GET `http://localhost:5173/`: returned HTTP 200 with valid document markup.
+
