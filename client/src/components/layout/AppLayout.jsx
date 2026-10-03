@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { useState, useRef, useEffect } from 'react';
+import { NavLink, Outlet, useLocation, useNavigate, Link } from 'react-router-dom';
 import {
   LayoutDashboard,
   FilePlus2,
@@ -14,69 +14,102 @@ import {
   LogOut,
   ShieldAlert,
   Building2,
+  User,
+  ChevronDown,
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
 import { classNames } from '../../lib/classNames';
 import { ROLE_LABELS } from '../../lib/constants';
+import { Badge } from '../ui/Badge';
 
 export function AppLayout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
   const { user, role, logout } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setUserDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const closeAllMenus = () => {
+    setMobileMenuOpen(false);
+    setUserDropdownOpen(false);
+  };
+
+  const handleLogout = () => {
+    closeAllMenus();
+    logout();
+    toast.success('You have been logged out.');
+    navigate('/login', { replace: true });
+  };
 
   // Define role-specific navigation items
   const getNavItems = () => {
     const items = [];
 
-    // Complainant items
+    // Complainant items (student and staff)
     if (role === 'student' || role === 'staff') {
       items.push(
-        { name: 'Dashboard', to: '/', icon: LayoutDashboard },
+        { name: 'Dashboard', to: '/dashboard', icon: LayoutDashboard },
         { name: 'File Complaint', to: '/complaints/new', icon: FilePlus2 }
       );
     }
 
     // Officer items
     if (role === 'officer') {
-      items.push({ name: 'My Queue', to: '/queue', icon: Inbox });
+      items.push({ name: 'My Queue', to: '/officer', icon: Inbox });
     }
 
     // Admin items
     if (role === 'admin') {
       items.push(
-        { name: 'Analytics', to: '/admin/analytics', icon: BarChart3 },
+        { name: 'Analytics', to: '/admin', icon: BarChart3 },
         { name: 'All Complaints', to: '/admin/complaints', icon: FileText },
         { name: 'Categories', to: '/admin/categories', icon: FolderKanban },
         { name: 'Users', to: '/admin/users', icon: Users }
       );
     }
 
-    // Fallback for unauthenticated or development preview: show combined items or UI kit
-    if (!role) {
-      items.push(
-        { name: 'Dashboard', to: '/', icon: LayoutDashboard },
-        { name: 'File Complaint', to: '/complaints/new', icon: FilePlus2 },
-        { name: 'My Queue (Officer)', to: '/queue', icon: Inbox },
-        { name: 'Admin Analytics', to: '/admin/analytics', icon: BarChart3 }
-      );
-    }
-
-    // Always include UI Kit link in development
-    items.push({ name: 'UI Kit (Dev)', to: '/ui-kit', icon: Palette });
-
     return items;
   };
 
   const navItems = getNavItems();
 
-  const userDisplayName = user?.name || 'Guest User';
-  const userRoleLabel = ROLE_LABELS[role] || (role ? role : 'Visitor');
+  const userDisplayName = user?.name || 'Campus User';
+  const userRoleLabel = ROLE_LABELS[role] || (role ? role : 'User');
   const userInitials = userDisplayName
     .split(' ')
+    .filter(Boolean)
     .map((n) => n[0])
     .join('')
     .substring(0, 2)
-    .toUpperCase();
+    .toUpperCase() || 'U';
+
+  const getRoleBadgeVariant = (userRole) => {
+    switch (userRole) {
+      case 'admin':
+        return 'rose';
+      case 'officer':
+        return 'amber';
+      case 'staff':
+        return 'sky';
+      case 'student':
+      default:
+        return 'indigo';
+    }
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
@@ -84,7 +117,7 @@ export function AppLayout() {
       {mobileMenuOpen && (
         <div
           className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-xs lg:hidden"
-          onClick={() => setMobileMenuOpen(false)}
+          onClick={closeAllMenus}
           aria-hidden="true"
         />
       )}
@@ -108,7 +141,7 @@ export function AppLayout() {
           <button
             type="button"
             onClick={() => setMobileMenuOpen(false)}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 cursor-pointer"
             aria-label="Close menu"
           >
             <X className="h-5 w-5" />
@@ -116,6 +149,9 @@ export function AppLayout() {
         </div>
 
         <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto">
+          <div className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+            Navigation
+          </div>
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.to;
@@ -123,7 +159,7 @@ export function AppLayout() {
               <NavLink
                 key={item.to}
                 to={item.to}
-                onClick={() => setMobileMenuOpen(false)}
+                onClick={closeAllMenus}
                 className={classNames(
                   'flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium transition-colors',
                   isActive
@@ -141,6 +177,38 @@ export function AppLayout() {
               </NavLink>
             );
           })}
+
+          <div className="pt-4 border-t border-slate-100">
+            <div className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+              Account
+            </div>
+            <NavLink
+              to="/profile"
+              onClick={closeAllMenus}
+              className={classNames(
+                'flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                location.pathname === '/profile'
+                  ? 'bg-indigo-50 text-indigo-700 font-semibold'
+                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+              )}
+            >
+              <User className="h-5 w-5 text-slate-400" />
+              <span>My Profile</span>
+            </NavLink>
+            <NavLink
+              to="/ui-kit"
+              onClick={closeAllMenus}
+              className={classNames(
+                'flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                location.pathname === '/ui-kit'
+                  ? 'bg-indigo-50 text-indigo-700 font-semibold'
+                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+              )}
+            >
+              <Palette className="h-5 w-5 text-slate-400" />
+              <span>UI Kit Showcase</span>
+            </NavLink>
+          </div>
         </nav>
 
         {user && (
@@ -153,16 +221,20 @@ export function AppLayout() {
                 <p className="text-sm font-medium text-slate-900 truncate">
                   {userDisplayName}
                 </p>
-                <p className="text-xs text-slate-500 truncate">{userRoleLabel}</p>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <Badge variant={getRoleBadgeVariant(role)} size="sm">
+                    {userRoleLabel}
+                  </Badge>
+                </div>
               </div>
             </div>
             <button
               type="button"
-              onClick={logout}
-              className="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-rose-600"
+              onClick={handleLogout}
+              className="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-colors cursor-pointer"
             >
               <LogOut className="h-4 w-4" />
-              <span>Log out</span>
+              <span>Sign Out</span>
             </button>
           </div>
         )}
@@ -213,10 +285,50 @@ export function AppLayout() {
                 </NavLink>
               );
             })}
+
+            <div className="pt-4 border-t border-slate-100">
+              <div className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                General
+              </div>
+              <NavLink
+                to="/profile"
+                className={classNames(
+                  'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                  location.pathname === '/profile'
+                    ? 'bg-indigo-50 text-indigo-700 font-semibold'
+                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                )}
+              >
+                <User
+                  className={classNames(
+                    'h-4.5 w-4.5 shrink-0',
+                    location.pathname === '/profile' ? 'text-indigo-600' : 'text-slate-400'
+                  )}
+                />
+                <span>Profile</span>
+              </NavLink>
+              <NavLink
+                to="/ui-kit"
+                className={classNames(
+                  'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                  location.pathname === '/ui-kit'
+                    ? 'bg-indigo-50 text-indigo-700 font-semibold'
+                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                )}
+              >
+                <Palette
+                  className={classNames(
+                    'h-4.5 w-4.5 shrink-0',
+                    location.pathname === '/ui-kit' ? 'text-indigo-600' : 'text-slate-400'
+                  )}
+                />
+                <span>UI Kit</span>
+              </NavLink>
+            </div>
           </nav>
 
           {/* User profile card at bottom of desktop sidebar */}
-          {user ? (
+          {user && (
             <div className="p-4 border-t border-slate-100 bg-slate-50/50">
               <div className="flex items-center gap-3">
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 font-semibold text-xs ring-2 ring-white">
@@ -229,7 +341,7 @@ export function AppLayout() {
                   <p className="text-xs text-slate-500 truncate flex items-center gap-1">
                     {userRoleLabel}
                     {user.department && (
-                      <span className="inline-flex items-center gap-0.5 text-slate-400">
+                      <span className="inline-flex items-center gap-0.5 text-slate-400 truncate">
                         • {user.department}
                       </span>
                     )}
@@ -237,17 +349,13 @@ export function AppLayout() {
                 </div>
                 <button
                   type="button"
-                  onClick={logout}
+                  onClick={handleLogout}
                   title="Sign out"
-                  className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-rose-600 transition-colors"
+                  className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-colors cursor-pointer"
                 >
                   <LogOut className="h-4 w-4" />
                 </button>
               </div>
-            </div>
-          ) : (
-            <div className="p-4 border-t border-slate-100 text-xs text-slate-500 text-center">
-              Campus Complaint System
             </div>
           )}
         </aside>
@@ -260,7 +368,7 @@ export function AppLayout() {
               <button
                 type="button"
                 onClick={() => setMobileMenuOpen(true)}
-                className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 lg:hidden"
+                className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 lg:hidden cursor-pointer"
                 aria-label="Open sidebar"
               >
                 <Menu className="h-5 w-5" />
@@ -273,33 +381,86 @@ export function AppLayout() {
               </div>
             </div>
 
-            {/* Top Bar Right side */}
+            {/* Top Bar User Menu */}
             <div className="flex items-center gap-4">
-              {user ? (
-                <div className="flex items-center gap-3">
-                  <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                    {userRoleLabel}
-                    {user.department && (
-                      <span className="text-slate-500 flex items-center gap-1">
-                        <Building2 className="h-3 w-3" />
-                        {user.department}
+              {user && (
+                <div className="relative" ref={dropdownRef}>
+                  <button
+                    type="button"
+                    onClick={() => setUserDropdownOpen(!userDropdownOpen)}
+                    className="flex items-center gap-3 rounded-xl p-1.5 hover:bg-slate-100 transition-colors cursor-pointer select-none"
+                    aria-expanded={userDropdownOpen}
+                  >
+                    <div className="hidden sm:flex flex-col text-right">
+                      <span className="text-sm font-semibold text-slate-900 leading-tight">
+                        {userDisplayName}
                       </span>
-                    )}
-                  </span>
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600 text-white font-medium text-xs">
-                    {userInitials}
-                  </div>
-                </div>
-              ) : (
-                <div className="text-xs text-slate-500 font-medium">
-                  Welcome, Guest
+                      <div className="flex items-center justify-end gap-1.5 mt-0.5">
+                        <Badge variant={getRoleBadgeVariant(role)} size="sm">
+                          {userRoleLabel}
+                        </Badge>
+                        {user.department && (
+                          <span className="text-[11px] text-slate-500 hidden md:inline-flex items-center gap-0.5">
+                            <Building2 className="h-3 w-3" />
+                            {user.department}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-600 text-white font-medium text-xs shadow-xs">
+                      {userInitials}
+                    </div>
+
+                    <ChevronDown className="h-4 w-4 text-slate-400 hidden sm:block" />
+                  </button>
+
+                  {/* Dropdown Menu */}
+                  {userDropdownOpen && (
+                    <div className="absolute right-0 mt-2 w-56 origin-top-right rounded-xl bg-white p-1.5 shadow-lg ring-1 ring-black/5 focus:outline-none z-50 animate-fadeIn border border-slate-100">
+                      <div className="px-3 py-2 border-b border-slate-100 mb-1 sm:hidden">
+                        <p className="text-sm font-semibold text-slate-900 truncate">
+                          {userDisplayName}
+                        </p>
+                        <p className="text-xs text-slate-500 truncate">{user.email}</p>
+                      </div>
+
+                      <Link
+                        to="/profile"
+                        onClick={closeAllMenus}
+                        className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+                      >
+                        <User className="h-4 w-4 text-slate-400" />
+                        <span>Profile & Settings</span>
+                      </Link>
+
+                      <Link
+                        to="/ui-kit"
+                        onClick={closeAllMenus}
+                        className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+                      >
+                        <Palette className="h-4 w-4 text-slate-400" />
+                        <span>UI Kit Showcase</span>
+                      </Link>
+
+                      <div className="my-1 border-t border-slate-100" />
+
+                      <button
+                        type="button"
+                        onClick={handleLogout}
+                        className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                      >
+                        <LogOut className="h-4 w-4" />
+                        <span>Sign Out</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
           </header>
 
-          {/* Main page content container */}
+          {/* Main Page Content */}
           <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
             <Outlet />
           </main>
