@@ -272,3 +272,33 @@ All files verified by static review. Smoke script ready to run once `.env` is co
 - `npm run lint` in `/client`: **PASS** (0 warnings, 0 errors across 42 files).
 - HTTP GET `http://localhost:5173/`: returned HTTP 200 with valid document markup.
 
+---
+
+## 2026-10-03 | Prompt F2 — Authentication UI, Route Map & Guards
+
+### What was built
+- **src/lib/validators.js**: Hand-written validation rules mirroring server specifications (`isValidEmail`, `isValidPassword` min 8 with >=1 letter & >=1 number, `validateLogin`, `validateRegister`, `validateUpdateProfile`, `validateChangePassword`).
+- **src/context/AuthContext.jsx**: Initial session hydration via `GET /auth/me` with full-page loading spinner, state management for `user`, `token`, and `role`, methods for `login`, `register`, `logout`, `refreshUser`, and `updateProfile`.
+- **src/pages/LoginPage.jsx**: Controlled form with field validation, 400 field error mapping, 401 "Invalid credentials" banner, 1-click demo account shortcuts (Student, Officer, Admin, Staff), and role-based redirect (`/dashboard`, `/officer`, `/admin`) or return to target route.
+- **src/pages/RegisterPage.jsx**: Controlled registration form for student/staff with role picker, department field, 400 validation mapping, 409 duplicate email handling, and redirect to `/login` with success toast.
+- **src/pages/ProfilePage.jsx**: User profile management with personal details overview, update name/department tab, and change password tab.
+- **src/pages/ForbiddenPage.jsx (403) & src/pages/NotFoundPage.jsx (404)**: Clean, styled error pages with role badges and navigation recovery buttons.
+- **src/pages/PageStub.jsx**: Reusable stub component for screens scheduled for subsequent phases.
+- **src/routes/**:
+  - `ProtectedRoute.jsx`: Redirects unauthenticated users to `/login` with preserved destination state.
+  - `RoleRoute.jsx`: Restricts routes by allowed role list, rendering `ForbiddenPage` on permission mismatch.
+  - `PublicOnlyRoute.jsx`: Redirects authenticated users away from `/login` and `/register` directly to their dashboard.
+  - `AppRoutes.jsx`: Complete route tree covering all application endpoints (`/login`, `/register`, `/dashboard`, `/complaints/new`, `/complaints/:id`, `/officer`, `/admin`, `/admin/complaints`, `/admin/categories`, `/admin/users`, `/profile`, `/ui-kit`, `/403`, `*`).
+- **src/components/layout/AppLayout.jsx**: Wired top bar user menu with name, role badge, department indicator, profile link, and sign out, alongside role-filtered sidebar links.
+
+### Decisions
+- Hydration check in `AuthContext` initializes `loading` based on the existence of a stored token, avoiding unnecessary flash of login/unauthorized screens.
+- `PublicOnlyRoute` ensures logged-in users visiting `/login` or `/register` are redirected to their respective dashboards.
+- `RoleRoute` directly renders `ForbiddenPage` (403) inline to keep URL history intact while clearly notifying users of missing permissions.
+
+### Verification
+- `npm run lint` in `/client`: **PASS** (0 warnings, 0 errors across 52 files).
+- `npm run build` in `/client`: **PASS** (1,988 modules transformed in 402ms).
+- Route structure verified with complete public, protected, and role-guarded trees.
+
+
