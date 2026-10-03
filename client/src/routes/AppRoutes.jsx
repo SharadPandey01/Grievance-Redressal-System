@@ -10,6 +10,7 @@ import { LoginPage } from '../pages/LoginPage';
 import { RegisterPage } from '../pages/RegisterPage';
 import { DashboardPage } from '../pages/DashboardPage';
 import { NewComplaintPage } from '../pages/NewComplaintPage';
+import { ComplaintDetailPage } from '../pages/ComplaintDetailPage';
 import { ProfilePage } from '../pages/ProfilePage';
 import { ForbiddenPage } from '../pages/ForbiddenPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
@@ -134,21 +135,7 @@ export function AppRoutes() {
           </Route>
 
           {/* Common Authenticated Routes */}
-          <Route
-            path="/complaints/:id"
-            element={
-              <PageStub
-                title="Complaint Detail & Workflow"
-                subtitle="Timeline, audit logs, comments thread, attachments, and status actions."
-                promptLabel="Phase F3/F4"
-                breadcrumbs={[
-                  { label: 'Home', href: '/' },
-                  { label: 'Complaints', href: '/dashboard' },
-                  { label: 'Detail' },
-                ]}
-              />
-            }
-          />
+          <Route path="/complaints/:id" element={<ComplaintDetailPage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/ui-kit" element={<UiKitPage />} />
         </Route>
