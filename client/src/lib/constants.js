@@ -26,6 +26,12 @@ export const PRIORITY = {
   HIGH: 'High',
 };
 
+export const SLA_DAYS = {
+  High: 2,
+  Medium: 5,
+  Low: 7,
+};
+
 export const ROLES = ['student', 'staff', 'officer', 'admin'];
 
 export const ROLE = {

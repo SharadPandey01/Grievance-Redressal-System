@@ -98,3 +98,16 @@ export function daysBetween(d1, d2 = new Date()) {
 
   return Math.abs(Math.floor((utc2 - utc1) / msPerDay));
 }
+
+/**
+ * Format bytes to human readable format (e.g. 245 KB, 1.8 MB)
+ * @param {number} bytes
+ * @returns {string}
+ */
+export function formatFileSize(bytes) {
+  if (bytes === 0 || !bytes) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
+}
