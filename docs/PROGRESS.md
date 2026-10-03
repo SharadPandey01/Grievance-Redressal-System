@@ -301,4 +301,45 @@ All files verified by static review. Smoke script ready to run once `.env` is co
 - `npm run build` in `/client`: **PASS** (1,988 modules transformed in 402ms).
 - Route structure verified with complete public, protected, and role-guarded trees.
 
+---
+
+## 2026-10-03 | Prompt F3 — Complainant Dashboard & Complaint Filing Form
+
+### What was built
+- **client/src/features/complaints/**: Reusable complaint listing components for all role portals:
+  - `ComplaintTable.jsx`: Full-width responsive table with tracking code link, title & department tags, priority & status badges, "Action needed" indicator for Resolved complaints, filed date, and SLA target/overdue warnings with skeleton loading support.
+  - `ComplaintCard.jsx`: Mobile-optimised stacked grievance card with priority accent borders, action chips, and metadata badges.
+  - `index.js`: Barrel export.
+- **client/src/lib/**:
+  - `constants.js`: Added `SLA_DAYS` mapping (`High: 2`, `Medium: 5`, `Low: 7`).
+  - `format.js`: Added `formatFileSize(bytes)` helper for user-friendly attachment previews.
+  - `validators.js`: Added `validateCreateComplaint` (5-120 title, 20-2000 description, category selection, priority enum) and `validateAttachments` (max 3 files, 5 MB limit, JPG/PNG/PDF validation).
+- **client/src/pages/DashboardPage.jsx**:
+  - Greeting header with role badge, quick manual refresh button, and "File a Complaint" CTA.
+  - 4 interactive stat cards from `GET /analytics/my-summary` (`Total`, `In Resolution`, `Awaiting Verification`, `Closed History`). "Awaiting Verification" is styled with active pulse highlighting and clicks directly to apply the `Resolved` filter.
+  - Status tabs (`All`, `Submitted`, `Acknowledged`, `In Progress`, `Resolved`, `Closed`) with live counts.
+  - Filter bar: Category select (populated via `GET /categories`), Priority select, and Sort selector.
+  - Debounced search with `setTimeout` inside `useEffect` (350ms delay) with instant clear button.
+  - `useFetch` with `pollMs: 30000` background polling and tab-focus refresh.
+  - Desktop `ComplaintTable` and mobile `ComplaintCard` views, loading skeletons, error banner with retry CTA, and contextual empty states with reset/file CTAs.
+- **client/src/pages/NewComplaintPage.jsx**:
+  - Controlled form with real-time character counters and field-level validation feedback.
+  - Priority segmented control cards displaying SLA turnaround commitments (2/5/7 days).
+  - "Submit Anonymously" toggle with informational identity concealment notice.
+  - Drag-and-drop file upload zone with file picker, instant client-side size/type checks, file list preview, and item removal.
+  - `FormData` multipart submission with spinner state and server error mapping.
+  - Post-submission confirmation panel showing the generated `GRV-YYYY-NNNN` code, 1-click clipboard copy, and links to view details or file another grievance.
+- **client/src/routes/AppRoutes.jsx**: Connected `/complaints/new` to `NewComplaintPage`.
+
+### Decisions
+- "Awaiting verification" stat card triggers direct filtering to `Resolved` status, reducing friction for students/staff closing out tickets.
+- File attachment validation is applied on the client before network upload to prevent wasted bandwidth and give immediate feedback on oversized or unsupported files.
+- Monospace font and dedicated copy button on the submission success panel make it easy for students to save their reference code.
+
+### Verification
+- `npm.cmd run lint` in `/client`: **PASS** (0 warnings, 0 errors across 55 files).
+- `npm.cmd run build` in `/client`: **PASS** (1,996 modules transformed in 495ms).
+
+
+
 

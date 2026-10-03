@@ -9,6 +9,7 @@ import { AppLayout } from '../components/layout/AppLayout';
 import { LoginPage } from '../pages/LoginPage';
 import { RegisterPage } from '../pages/RegisterPage';
 import { DashboardPage } from '../pages/DashboardPage';
+import { NewComplaintPage } from '../pages/NewComplaintPage';
 import { ProfilePage } from '../pages/ProfilePage';
 import { ForbiddenPage } from '../pages/ForbiddenPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
@@ -51,20 +52,7 @@ export function AppRoutes() {
           {/* Complainant Routes (Student & Staff) */}
           <Route element={<RoleRoute allowedRoles={['student', 'staff']} />}>
             <Route path="/dashboard" element={<DashboardPage />} />
-            <Route
-              path="/complaints/new"
-              element={
-                <PageStub
-                  title="File New Complaint"
-                  subtitle="Submit a categorised grievance with optional attachments and priority selection."
-                  promptLabel="Phase F3"
-                  breadcrumbs={[
-                    { label: 'Home', href: '/dashboard' },
-                    { label: 'File Complaint' },
-                  ]}
-                />
-              }
-            />
+            <Route path="/complaints/new" element={<NewComplaintPage />} />
           </Route>
 
           {/* Officer Routes */}

@@ -147,3 +147,89 @@ export function validateChangePassword({ currentPassword, newPassword, confirmPa
     errors,
   };
 }
+
+/**
+ * Attachment constraints
+ */
+export const ATTACHMENT_RULES = {
+  MAX_FILES: 3,
+  MAX_FILE_SIZE_MB: 5,
+  MAX_FILE_SIZE_BYTES: 5 * 1024 * 1024,
+  ALLOWED_TYPES: ['image/jpeg', 'image/png', 'application/pdf'],
+  ALLOWED_EXTENSIONS: ['.jpg', '.jpeg', '.png', '.pdf'],
+};
+
+/**
+ * Validate attachment files on client
+ */
+export function validateAttachments(files, existingCount = 0) {
+  const errors = [];
+  const validFiles = [];
+
+  if (files.length + existingCount > ATTACHMENT_RULES.MAX_FILES) {
+    errors.push(`Maximum ${ATTACHMENT_RULES.MAX_FILES} attachments allowed.`);
+    return { validFiles: [], errors };
+  }
+
+  for (const file of files) {
+    const isAllowedType =
+      ATTACHMENT_RULES.ALLOWED_TYPES.includes(file.type) ||
+      ATTACHMENT_RULES.ALLOWED_EXTENSIONS.some((ext) =>
+        file.name.toLowerCase().endsWith(ext)
+      );
+
+    if (!isAllowedType) {
+      errors.push(`"${file.name}": Only JPG, PNG, and PDF files are allowed.`);
+      continue;
+    }
+
+    if (file.size > ATTACHMENT_RULES.MAX_FILE_SIZE_BYTES) {
+      errors.push(`"${file.name}": File size exceeds 5 MB limit.`);
+      continue;
+    }
+
+    validFiles.push(file);
+  }
+
+  return {
+    validFiles,
+    errors,
+  };
+}
+
+/**
+ * Validate complaint creation
+ */
+export function validateCreateComplaint({ title, description, category, priority }) {
+  const errors = {};
+
+  if (!title || !title.trim()) {
+    errors.title = 'Title is required';
+  } else if (title.trim().length < 5) {
+    errors.title = 'Title must be at least 5 characters';
+  } else if (title.trim().length > 120) {
+    errors.title = 'Title cannot exceed 120 characters';
+  }
+
+  if (!description || !description.trim()) {
+    errors.description = 'Description is required';
+  } else if (description.trim().length < 20) {
+    errors.description = 'Description must be at least 20 characters';
+  } else if (description.trim().length > 2000) {
+    errors.description = 'Description cannot exceed 2000 characters';
+  }
+
+  if (!category || !category.trim()) {
+    errors.category = 'Please select a category';
+  }
+
+  if (priority && !['Low', 'Medium', 'High'].includes(priority)) {
+    errors.priority = 'Priority must be Low, Medium, or High';
+  }
+
+  return {
+    isValid: Object.keys(errors).length === 0,
+    errors,
+  };
+}
+
