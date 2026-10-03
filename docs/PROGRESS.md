@@ -340,6 +340,37 @@ All files verified by static review. Smoke script ready to run once `.env` is co
 - `npm.cmd run lint` in `/client`: **PASS** (0 warnings, 0 errors across 55 files).
 - `npm.cmd run build` in `/client`: **PASS** (1,996 modules transformed in 495ms).
 
+---
+
+## 2026-10-03 | Prompt F4 — Complaint Detail & Shared Workflow Interface
+
+### What was built
+- **client/src/features/complaints/ComplaintActions.jsx**: Workflow action container placeholder mounted in the complaint header (ready for F5 workflow buttons).
+- **client/src/features/complaints/StatusTimeline.jsx**:
+  - Compact 5-stage progress stepper (`Submitted` → `Acknowledged` → `In Progress` → `Resolved` → `Closed`) dynamically displaying the current active phase.
+  - Vertical chronological audit trail list derived from `statusLogs` with actor attribution (`User` / `System`), status badges, remarks, and formatted timestamps.
+- **client/src/features/complaints/CommentsThread.jsx**:
+  - Discussion and activity thread populated from `GET /complaints/:id/comments`.
+  - Distinguishes internal notes with amber styling, privacy badges (`Internal Note — Hidden from complainant`), and lock icons.
+  - Interactive composer with 1000-character limit counter, role-guarded internal note checkbox (for officers and admins only), and submission guards when complaint is `Closed`.
+- **client/src/pages/ComplaintDetailPage.jsx** mounted at `/complaints/:id`:
+  - Responsive two-column desktop / single-column mobile layout.
+  - Top header: Smart back navigation by role, complaint code with 1-click clipboard copy, `StatusBadge`, `PriorityBadge`, and SLA overdue warning chip.
+  - Main column: Detailed grievance description, official resolution summary callout (when resolved/closed), authenticated attachment downloader (blob fetch with dynamic `<a download>` trigger), and comments thread.
+  - Side column: Overview card (category, department, anonymous/filer identity, assigned officer, creation and update timestamps, reopen counter), `StatusTimeline`, and complainant satisfaction feedback card (when present).
+  - State guards: 30-second polling via `useFetch`, loading skeletons, `ForbiddenPage` (403), `NotFoundPage` (404), and error retry handling.
+- **client/src/routes/AppRoutes.jsx**: Connected `/complaints/:id` to `ComplaintDetailPage`.
+
+### Decisions
+- Attachment downloads stream through the authenticated backend endpoint using Axios with `responseType: 'blob'`, creating and cleaning up temporary Object URLs to ensure security without exposing raw disk paths.
+- Anonymous identity masking is preserved everywhere across the page (overview card, comments thread, audit trail).
+- If a complaint is in `Closed` status, the comments composer automatically disables with a friendly notice explaining that discussion is locked.
+
+### Verification
+- `npm.cmd run lint` in `/client`: **PASS** (0 warnings, 0 errors across 59 files).
+- `npm.cmd run build` in `/client`: **PASS** (2,001 modules transformed into production bundle in 516ms).
+
+
 
 
 
