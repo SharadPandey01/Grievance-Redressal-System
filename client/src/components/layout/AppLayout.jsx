@@ -8,7 +8,6 @@ import {
   FileText,
   FolderKanban,
   Users,
-  Palette,
   Menu,
   X,
   LogOut,
@@ -195,19 +194,6 @@ export function AppLayout() {
               <User className="h-5 w-5 text-slate-400" />
               <span>My Profile</span>
             </NavLink>
-            <NavLink
-              to="/ui-kit"
-              onClick={closeAllMenus}
-              className={classNames(
-                'flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                location.pathname === '/ui-kit'
-                  ? 'bg-indigo-50 text-indigo-700 font-semibold'
-                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-              )}
-            >
-              <Palette className="h-5 w-5 text-slate-400" />
-              <span>UI Kit Showcase</span>
-            </NavLink>
           </div>
         </nav>
 
@@ -306,23 +292,6 @@ export function AppLayout() {
                   )}
                 />
                 <span>Profile</span>
-              </NavLink>
-              <NavLink
-                to="/ui-kit"
-                className={classNames(
-                  'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
-                  location.pathname === '/ui-kit'
-                    ? 'bg-indigo-50 text-indigo-700 font-semibold'
-                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-                )}
-              >
-                <Palette
-                  className={classNames(
-                    'h-4.5 w-4.5 shrink-0',
-                    location.pathname === '/ui-kit' ? 'text-indigo-600' : 'text-slate-400'
-                  )}
-                />
-                <span>UI Kit</span>
               </NavLink>
             </div>
           </nav>
@@ -432,15 +401,6 @@ export function AppLayout() {
                       >
                         <User className="h-4 w-4 text-slate-400" />
                         <span>Profile & Settings</span>
-                      </Link>
-
-                      <Link
-                        to="/ui-kit"
-                        onClick={closeAllMenus}
-                        className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors"
-                      >
-                        <Palette className="h-4 w-4 text-slate-400" />
-                        <span>UI Kit Showcase</span>
                       </Link>
 
                       <div className="my-1 border-t border-slate-100" />

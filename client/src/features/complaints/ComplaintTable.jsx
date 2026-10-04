@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, Clock, CheckCircle2, ChevronRight, User, Building } from 'lucide-react';
 import { StatusBadge, PriorityBadge, Skeleton } from '../../components/ui';
-import { formatDate } from '../../lib/format';
+import { formatDate, getDaysOverdue } from '../../lib/format';
 import { classNames } from '../../lib/classNames';
 
 export function ComplaintTable({
@@ -9,6 +9,7 @@ export function ComplaintTable({
   loading = false,
   showAssignee = false,
   showFiler = false,
+  renderActions = null,
   className = '',
 }) {
   const navigate = useNavigate();
@@ -28,7 +29,7 @@ export function ComplaintTable({
                 {showAssignee && <th scope="col" className="px-5 py-3.5">Assigned To</th>}
                 <th scope="col" className="px-5 py-3.5">Submitted</th>
                 <th scope="col" className="px-5 py-3.5">SLA Target</th>
-                <th scope="col" className="px-4 py-3.5 text-right"><span className="sr-only">Actions</span></th>
+                <th scope="col" className="px-5 py-3.5 text-right"><span className="sr-only">Actions</span></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -47,7 +48,7 @@ export function ComplaintTable({
                   {showAssignee && <td className="px-5 py-4"><Skeleton width="90px" height="16px" /></td>}
                   <td className="px-5 py-4"><Skeleton width="80px" height="14px" /></td>
                   <td className="px-5 py-4"><Skeleton width="90px" height="14px" /></td>
-                  <td className="px-4 py-4 text-right"><Skeleton width="24px" height="24px" className="ml-auto rounded-full" /></td>
+                  <td className="px-5 py-4 text-right"><Skeleton width="24px" height="24px" className="ml-auto rounded-full" /></td>
                 </tr>
               ))}
             </tbody>
@@ -71,7 +72,7 @@ export function ComplaintTable({
               {showAssignee && <th scope="col" className="px-5 py-3.5">Assigned To</th>}
               <th scope="col" className="px-5 py-3.5">Submitted</th>
               <th scope="col" className="px-5 py-3.5">SLA Target</th>
-              <th scope="col" className="px-4 py-3.5 text-right"><span className="sr-only">Actions</span></th>
+              <th scope="col" className="px-5 py-3.5 text-right"><span className="sr-only">Actions</span></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -80,6 +81,9 @@ export function ComplaintTable({
               const departmentName = c.category?.department;
               const isResolved = c.status === 'Resolved';
               const isOverdue = !!c.isOverdue;
+              const isHighPriority = c.priority === 'High';
+
+              const daysOverdue = isOverdue ? getDaysOverdue(c.dueAt) : 0;
 
               return (
                 <tr
@@ -87,18 +91,19 @@ export function ComplaintTable({
                   onClick={() => navigate(`/complaints/${c._id}`)}
                   className={classNames(
                     'group cursor-pointer transition-colors duration-150',
-                    'hover:bg-slate-50/80',
-                    isResolved ? 'bg-emerald-50/20' : ''
+                    isOverdue
+                      ? 'bg-rose-50/70 hover:bg-rose-100/80 border-l-4 border-l-rose-500'
+                      : isResolved
+                      ? 'bg-emerald-50/20 hover:bg-slate-50/80'
+                      : 'hover:bg-slate-50/80'
                   )}
                 >
-                  {/* Code */}
                   <td className="px-5 py-4 whitespace-nowrap">
                     <span className="font-mono text-xs font-bold text-slate-900 bg-slate-100 px-2 py-1 rounded border border-slate-200 group-hover:bg-indigo-50 group-hover:text-indigo-700 group-hover:border-indigo-200 transition-colors">
                       {c.code || 'GRV-XXXX'}
                     </span>
                   </td>
 
-                  {/* Title & Category */}
                   <td className="px-5 py-4 max-w-xs md:max-w-md">
                     <div className="font-medium text-slate-900 line-clamp-1 group-hover:text-indigo-600 transition-colors">
                       {c.title}
@@ -116,12 +121,17 @@ export function ComplaintTable({
                     </div>
                   </td>
 
-                  {/* Priority */}
                   <td className="px-5 py-4 whitespace-nowrap">
-                    <PriorityBadge priority={c.priority} size="sm" />
+                    <div className="flex items-center gap-1.5">
+                      <PriorityBadge priority={c.priority} size="sm" />
+                      {isHighPriority && (
+                        <span className="inline-flex items-center rounded-full bg-rose-100 px-1.5 py-0.2 text-[10px] font-bold text-rose-700 uppercase tracking-wide border border-rose-300">
+                          Urgent
+                        </span>
+                      )}
+                    </div>
                   </td>
 
-                  {/* Status */}
                   <td className="px-5 py-4 whitespace-nowrap">
                     <div className="flex items-center gap-2">
                       <StatusBadge status={c.status} size="sm" />
@@ -134,12 +144,11 @@ export function ComplaintTable({
                     </div>
                   </td>
 
-                  {/* Filed By */}
                   {showFiler && (
                     <td className="px-5 py-4 whitespace-nowrap text-xs text-slate-600">
                       <div className="flex items-center gap-1.5">
                         <User className="h-3.5 w-3.5 text-slate-400" />
-                        <span>
+                        <span className={c.isAnonymous ? 'italic font-medium text-slate-500' : 'text-slate-800'}>
                           {c.isAnonymous
                             ? 'Anonymous'
                             : c.filedBy?.name || c.filedByLabel || 'Complainant'}
@@ -148,7 +157,6 @@ export function ComplaintTable({
                     </td>
                   )}
 
-                  {/* Assigned To */}
                   {showAssignee && (
                     <td className="px-5 py-4 whitespace-nowrap text-xs text-slate-700">
                       {c.assignedTo?.name ? (
@@ -159,17 +167,15 @@ export function ComplaintTable({
                     </td>
                   )}
 
-                  {/* Submitted Date */}
                   <td className="px-5 py-4 whitespace-nowrap text-xs text-slate-500">
                     {formatDate(c.createdAt)}
                   </td>
 
-                  {/* SLA Target / Overdue */}
                   <td className="px-5 py-4 whitespace-nowrap text-xs">
                     {isOverdue ? (
-                      <span className="inline-flex items-center gap-1 font-semibold text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
-                        <AlertTriangle className="h-3 w-3 text-rose-600" />
-                        Overdue
+                      <span className="inline-flex items-center gap-1.5 font-semibold text-rose-700 bg-rose-100/90 px-2.5 py-1 rounded-md border border-rose-300 shadow-xs">
+                        <AlertTriangle className="h-3.5 w-3.5 text-rose-600 shrink-0" />
+                        {daysOverdue} {daysOverdue === 1 ? 'day' : 'days'} overdue
                       </span>
                     ) : c.dueAt && !['Resolved', 'Closed'].includes(c.status) ? (
                       <span className="inline-flex items-center gap-1 text-slate-600">
@@ -181,11 +187,16 @@ export function ComplaintTable({
                     )}
                   </td>
 
-                  {/* Action Link Arrow */}
-                  <td className="px-4 py-4 whitespace-nowrap text-right text-xs">
-                    <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-colors">
-                      <ChevronRight className="h-4 w-4" />
-                    </span>
+                  <td className="px-5 py-4 whitespace-nowrap text-right text-xs">
+                    {renderActions ? (
+                      <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                        {renderActions(c)}
+                      </div>
+                    ) : (
+                      <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-colors">
+                        <ChevronRight className="h-4 w-4" />
+                      </span>
+                    )}
                   </td>
                 </tr>
               );
