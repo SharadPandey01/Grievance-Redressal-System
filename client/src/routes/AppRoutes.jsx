@@ -5,18 +5,19 @@ import { RoleRoute } from './RoleRoute';
 import { PublicOnlyRoute } from './PublicOnlyRoute';
 import { AppLayout } from '../components/layout/AppLayout';
 
-// Pages
 import { LoginPage } from '../pages/LoginPage';
 import { RegisterPage } from '../pages/RegisterPage';
 import { DashboardPage } from '../pages/DashboardPage';
 import { NewComplaintPage } from '../pages/NewComplaintPage';
 import { ComplaintDetailPage } from '../pages/ComplaintDetailPage';
 import { OfficerQueuePage } from '../pages/OfficerQueuePage';
+import { AdminDashboardPage } from '../pages/AdminDashboardPage';
 import { AdminComplaintsPage } from '../pages/AdminComplaintsPage';
+import { AdminCategoriesPage } from '../pages/AdminCategoriesPage';
+import { AdminUsersPage } from '../pages/AdminUsersPage';
 import { ProfilePage } from '../pages/ProfilePage';
 import { ForbiddenPage } from '../pages/ForbiddenPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
-import { PageStub } from '../pages/PageStub';
 import { UiKitPage } from '../pages/UiKitPage';
 
 function RootIndexRedirect() {
@@ -65,49 +66,10 @@ export function AppRoutes() {
 
           {/* Admin Routes */}
           <Route element={<RoleRoute allowedRoles={['admin']} />}>
-            <Route
-              path="/admin"
-              element={
-                <PageStub
-                  title="Campus Analytics Overview"
-                  subtitle="System metrics, SLA compliance, monthly resolution trends, and satisfaction ratings."
-                  promptLabel="Phase F7"
-                  breadcrumbs={[
-                    { label: 'Home', href: '/admin' },
-                    { label: 'Analytics' },
-                  ]}
-                />
-              }
-            />
+            <Route path="/admin" element={<AdminDashboardPage />} />
             <Route path="/admin/complaints" element={<AdminComplaintsPage />} />
-            <Route
-              path="/admin/categories"
-              element={
-                <PageStub
-                  title="Category Master Data"
-                  subtitle="Manage complaint categories, department mappings, and default handler assignments."
-                  promptLabel="Phase F6"
-                  breadcrumbs={[
-                    { label: 'Home', href: '/admin' },
-                    { label: 'Categories' },
-                  ]}
-                />
-              }
-            />
-            <Route
-              path="/admin/users"
-              element={
-                <PageStub
-                  title="Campus User Management"
-                  subtitle="Directory of students, staff, officers, and administrators with role assignment."
-                  promptLabel="Phase F6"
-                  breadcrumbs={[
-                    { label: 'Home', href: '/admin' },
-                    { label: 'Users' },
-                  ]}
-                />
-              }
-            />
+            <Route path="/admin/categories" element={<AdminCategoriesPage />} />
+            <Route path="/admin/users" element={<AdminUsersPage />} />
           </Route>
 
           {/* Common Authenticated Routes */}

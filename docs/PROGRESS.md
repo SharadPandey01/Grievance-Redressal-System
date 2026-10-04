@@ -435,6 +435,44 @@ All files verified by static review. Smoke script ready to run once `.env` is co
 - `npm run lint` in `/client`: **PASS** (0 errors).
 - `npm run build` in `/client`: **PASS** (2,005 modules transformed in 1.33s).
 
+---
+
+## 2026-10-04 | Prompt F7 — Admin: Analytics Dashboard, Categories, Users
+
+### What was built
+- **client/src/pages/AdminDashboardPage.jsx** mounted at `/admin` (admin only):
+  - 6 KPI cards from `GET /analytics/summary`: Total Grievances, Active / Open, Overdue SLA, Average Resolution Time (in hours / days), Average Rating (star rating out of 5), and Reopen Rate (%).
+  - 5 interactive Recharts data visualizations:
+    - Status distribution donut chart (`PieChart` with `innerRadius={55}`, `outerRadius={85}`) using palette aligned with `STATUS_COLORS`.
+    - 6-month resolution trend line chart (`LineChart` comparing created vs. resolved monthly counts).
+    - Complaints by category horizontal bar chart (`BarChart` with `layout="vertical"`).
+    - Complaints by department bar chart (`BarChart`).
+    - Complaints by priority bar chart with color-coded severity cells (`#f43f5e` for High, `#f59e0b` for Medium, `#94a3b8` for Low).
+    - Responsive containers, custom tooltips, legends, and empty data fallbacks.
+  - "Needs attention" list: top 5 overdue complaints fetched from `GET /complaints?overdue=true&sort=dueAt&limit=5`, showing days overdue, assigned officer, priority, and direct links to detail views.
+- **client/src/pages/AdminCategoriesPage.jsx** mounted at `/admin/categories` (admin only):
+  - Category master table with name, department, default officer handler, and active status badge.
+  - Create / Edit modal with name, description, department, active status toggle, and default officer assignment dropdown (`GET /users/officers`).
+  - Inline client-side validation and server 409 conflict error mapping (`Category with this name already exists` mapped under the name field).
+  - Soft-deactivation workflow with `ConfirmDialog` calling `DELETE /api/categories/:id`, and 1-click reactivation.
+- **client/src/pages/AdminUsersPage.jsx** mounted at `/admin/users` (admin only):
+  - Paginated table of campus accounts with role, department, active status, and search filters synchronized via `useSearchParams`.
+  - Create user modal supporting all roles (`student`, `staff`, `officer`, `admin`), random password generator button (`generateRandomPassword()`), role-conditional department requirement for officers, and 409 duplicate email handling.
+  - Edit user modal with self-action protections: disables role change and account deactivation when editing the currently logged-in admin account.
+  - Server safety guard error toast notifications (e.g. attempting to deactivate/demote the last remaining active admin).
+- **client/src/routes/AppRoutes.jsx**:
+  - Wired `/admin` to `AdminDashboardPage`, `/admin/categories` to `AdminCategoriesPage`, and `/admin/users` to `AdminUsersPage`.
+
+### Decisions
+- Recharts visualizations use `ResponsiveContainer` and custom tooltips for mobile/desktop fluid sizing without layout shifts.
+- Category default officer handler directly integrates with backend auto-assignment so complaints filed under that category automatically assign to that officer.
+- Self-action guard indicators inform admins when modifying their own accounts while completely disabling destructive actions before network transmission.
+
+### Verification
+- `npm run lint` in `/client`: **PASS** (0 errors).
+- `npm run build` in `/client`: **PASS** (2,580 modules transformed into production bundle in 2.11s).
+
+
 
 
 
