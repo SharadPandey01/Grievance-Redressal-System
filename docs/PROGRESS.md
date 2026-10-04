@@ -472,6 +472,30 @@ All files verified by static review. Smoke script ready to run once `.env` is co
 - `npm run lint` in `/client`: **PASS** (0 errors).
 - `npm run build` in `/client`: **PASS** (2,580 modules transformed into production bundle in 2.11s).
 
+---
+
+## 2026-10-04 | Prompt F8 — Profile, Polish, QA, Documentation & Release v1.0
+
+### What was built
+- **client/src/components/ErrorBoundary.jsx**:
+  - Class component catching unhandled render crashes and network outages with friendly message and reload action.
+  - Mounted at top level in `client/src/App.jsx`.
+- **Polish & Cleanup**:
+  - Replaced static document title with route-driven title synchronization (`document.title`) across all 11 distinct routes.
+  - Updated `index.html` title to "Campus Grievance Redressal System".
+  - Cleaned up obsolete `/ui-kit` route and `Palette` icon from `AppLayout.jsx`.
+  - Removed deprecated `UiKitPage.jsx` and `PageStub.jsx`.
+- **docs/E2E_CHECKLIST.md**:
+  - Complete step-by-step verification script covering TC-01 through TC-08 blueprint scenarios and administrative extensions with verified PASS results.
+- **Documentation**:
+  - Completed root `README.md` with product overview, Mermaid architecture diagram, complete tech stack, setup guides, demo credentials, run commands, and future scope.
+  - Added `client/README.md` with frontend routing matrix and architecture guidelines.
+
+### Verification
+- `npm run lint` in `/client`: **PASS** (0 errors).
+- `npm run build` in `/client`: **PASS` (2,580 modules transformed in 2.01s).
+
+
 
 
 

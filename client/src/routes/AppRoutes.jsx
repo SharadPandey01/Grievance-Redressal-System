@@ -1,4 +1,5 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { ProtectedRoute } from './ProtectedRoute';
 import { RoleRoute } from './RoleRoute';
@@ -18,7 +19,6 @@ import { AdminUsersPage } from '../pages/AdminUsersPage';
 import { ProfilePage } from '../pages/ProfilePage';
 import { ForbiddenPage } from '../pages/ForbiddenPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
-import { UiKitPage } from '../pages/UiKitPage';
 
 function RootIndexRedirect() {
   const { role } = useAuth();
@@ -36,35 +36,54 @@ function RootIndexRedirect() {
 }
 
 export function AppRoutes() {
+  const location = useLocation();
+
+  useEffect(() => {
+    const titles = {
+      '/dashboard': 'Dashboard',
+      '/complaints/new': 'File a Complaint',
+      '/officer': 'Officer Queue',
+      '/admin': 'Analytics Dashboard',
+      '/admin/complaints': 'All Complaints',
+      '/admin/categories': 'Categories Management',
+      '/admin/users': 'Users Management',
+      '/profile': 'User Profile',
+      '/login': 'Sign In',
+      '/register': 'Register Account',
+      '/403': 'Access Denied',
+    };
+
+    let title = 'Campus Grievance Redressal System';
+    if (location.pathname.startsWith('/complaints/')) {
+      title = 'Complaint Details | Campus Grievance System';
+    } else if (titles[location.pathname]) {
+      title = `${titles[location.pathname]} | Campus Grievance System`;
+    }
+    document.title = title;
+  }, [location.pathname]);
+
   return (
     <Routes>
-      {/* Public Only Auth Routes */}
       <Route element={<PublicOnlyRoute />}>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
       </Route>
 
-      {/* Standalone Error Routes */}
       <Route path="/403" element={<ForbiddenPage />} />
 
-      {/* Protected App Layout Routes */}
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
-          {/* Root Redirect to Role Default */}
           <Route path="/" element={<RootIndexRedirect />} />
 
-          {/* Complainant Routes (Student & Staff) */}
           <Route element={<RoleRoute allowedRoles={['student', 'staff']} />}>
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/complaints/new" element={<NewComplaintPage />} />
           </Route>
 
-          {/* Officer Routes */}
           <Route element={<RoleRoute allowedRoles={['officer']} />}>
             <Route path="/officer" element={<OfficerQueuePage />} />
           </Route>
 
-          {/* Admin Routes */}
           <Route element={<RoleRoute allowedRoles={['admin']} />}>
             <Route path="/admin" element={<AdminDashboardPage />} />
             <Route path="/admin/complaints" element={<AdminComplaintsPage />} />
@@ -72,14 +91,11 @@ export function AppRoutes() {
             <Route path="/admin/users" element={<AdminUsersPage />} />
           </Route>
 
-          {/* Common Authenticated Routes */}
           <Route path="/complaints/:id" element={<ComplaintDetailPage />} />
           <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/ui-kit" element={<UiKitPage />} />
         </Route>
       </Route>
 
-      {/* 404 Catch-All */}
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
