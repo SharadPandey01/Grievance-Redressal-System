@@ -77,7 +77,7 @@ async function getSummary() {
     Complaint.aggregate([
       { $group: { _id: '$category', count: { $sum: 1 } } },
       { $lookup: { from: 'categories', localField: '_id', foreignField: '_id', as: 'cat' } },
-      { $unwind: { path: '$cat', preserveNullAndEmpty: true } },
+      { $unwind: { path: '$cat', preserveNullAndEmptyArrays: true } },
       { $project: { _id: 0, name: { $ifNull: ['$cat.name', 'Uncategorised'] }, count: 1 } },
       { $sort: { count: -1 } },
     ]),
@@ -85,7 +85,7 @@ async function getSummary() {
     // Counts by category department
     Complaint.aggregate([
       { $lookup: { from: 'categories', localField: 'category', foreignField: '_id', as: 'cat' } },
-      { $unwind: { path: '$cat', preserveNullAndEmpty: true } },
+      { $unwind: { path: '$cat', preserveNullAndEmptyArrays: true } },
       { $group: { _id: '$cat.department', count: { $sum: 1 } } },
       { $project: { _id: 0, department: { $ifNull: ['$_id', 'Unknown'] }, count: 1 } },
       { $sort: { count: -1 } },

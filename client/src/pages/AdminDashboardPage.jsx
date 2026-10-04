@@ -69,8 +69,11 @@ export function AdminDashboardPage() {
   const {
     data: overdueComplaints,
     loading: overdueLoading,
+    error: overdueError,
     refetch: refetchOverdue,
   } = useFetch(fetchOverdue, [], { pollMs: 30000 });
+
+  const overdueList = Array.isArray(overdueComplaints) ? overdueComplaints : [];
 
   const handleRefreshAll = () => {
     refetchSummary();
@@ -493,7 +496,21 @@ export function AdminDashboardPage() {
           </div>
         )}
 
-        {!overdueLoading && overdueComplaints && overdueComplaints.length === 0 && (
+        {overdueError && (
+          <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-rose-800 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <AlertTriangle className="h-5 w-5 text-rose-600 shrink-0" />
+              <span className="text-sm font-medium">
+                {overdueError?.message || 'Failed to load overdue complaints.'}
+              </span>
+            </div>
+            <Button variant="outline" size="sm" onClick={refetchOverdue}>
+              Retry
+            </Button>
+          </div>
+        )}
+
+        {!overdueLoading && !overdueError && overdueList.length === 0 && (
           <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-6 text-center">
             <CheckCircle2 className="h-8 w-8 text-emerald-600 mx-auto mb-2" />
             <h4 className="text-sm font-semibold text-emerald-900">All Grievances on Schedule</h4>
@@ -503,7 +520,7 @@ export function AdminDashboardPage() {
           </div>
         )}
 
-        {!overdueLoading && overdueComplaints && overdueComplaints.length > 0 && (
+        {!overdueLoading && !overdueError && overdueList.length > 0 && (
           <div className="overflow-hidden rounded-xl border border-rose-200 bg-white shadow-xs">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm text-slate-600">
@@ -519,7 +536,7 @@ export function AdminDashboardPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {overdueComplaints.map((c) => {
+                  {overdueList.map((c) => {
                     const daysOverdue = getDaysOverdue(c.dueAt);
                     return (
                       <tr

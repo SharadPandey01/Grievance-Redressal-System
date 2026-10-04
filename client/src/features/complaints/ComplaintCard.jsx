@@ -117,7 +117,7 @@ export function ComplaintCard({
       </div>
 
       {renderActions && (
-        <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+        <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-end gap-2" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
           {renderActions(complaint)}
         </div>
       )}

@@ -30,6 +30,7 @@ import { getUsers, createUser, updateUser } from '../api/users';
 import { useAuth } from '../hooks/useAuth';
 import { useFetch } from '../hooks/useFetch';
 import { ROLES, ROLE_LABELS } from '../lib/constants';
+import { formatDate } from '../lib/format';
 
 function generateRandomPassword() {
   const letters = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ';
@@ -199,7 +200,7 @@ export function AdminUsersPage() {
         email: createEmail.trim().toLowerCase(),
         password: createPassword,
         role: createRole,
-        department: createRole === 'officer' ? createDepartment.trim() : undefined,
+        department: createDepartment.trim() || undefined,
       });
 
       toast.success(`User "${createName.trim()}" created successfully`);
@@ -243,7 +244,7 @@ export function AdminUsersPage() {
     const payload = {
       name: editName.trim(),
       role: editRole,
-      department: editRole === 'officer' ? editDepartment.trim() : '',
+      department: editDepartment.trim(),
       isActive: editIsActive,
     };
 

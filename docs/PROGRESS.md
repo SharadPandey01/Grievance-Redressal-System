@@ -493,7 +493,36 @@ All files verified by static review. Smoke script ready to run once `.env` is co
 
 ### Verification
 - `npm run lint` in `/client`: **PASS** (0 errors).
-- `npm run build` in `/client`: **PASS` (2,580 modules transformed in 2.01s).
+- `npm run build` in `/client`: **PASS** (2,580 modules transformed in 2.01s).
+
+---
+
+## 2026-10-04 | Administrator Pages Audit & Bug Fixes
+
+### What was inspected & fixed
+1. **Backend Minimal Bug Fix (`server/src/services/analyticsService.js`)**:
+   - **Bug**: The aggregation pipelines for `byCategory` and `byDepartment` in `analyticsService.getSummary()` used `{ $unwind: { path: '$cat', preserveNullAndEmpty: true } }` instead of the valid MongoDB syntax `preserveNullAndEmptyArrays: true`.
+   - **Impact**: When running MongoDB in Docker or production, any request to `GET /api/analytics/summary` failed with `MongoServerError: unrecognized option to $unwind stage: preserveNullAndEmpty`, completely breaking the admin analytics dashboard.
+   - **Fix**: Corrected both `$unwind` pipeline stages to `preserveNullAndEmptyArrays: true`.
+2. **Admin Users Missing Import (`client/src/pages/AdminUsersPage.jsx`)**:
+   - **Bug**: `formatDate` was utilized at line 530 (`{formatDate(u.createdAt)}`) but was not imported from `../lib/format`.
+   - **Impact**: Viewing the user directory on `/admin/users` threw `ReferenceError: formatDate is not defined`.
+   - **Fix**: Added `import { formatDate } from '../lib/format';` and preserved user department fields during creation and editing for all roles.
+3. **Admin Dashboard Overdue Error Recovery (`client/src/pages/AdminDashboardPage.jsx`)**:
+   - Destructured `error: overdueError` from `useFetch` and added dedicated alert banner with retry action.
+   - Guarded array mapping with `overdueList` fallback so table never crashes on unexpected API responses.
+4. **Mobile Complaint Card Actions (`client/src/features/complaints/ComplaintCard.jsx`)**:
+   - Added `e.preventDefault()` alongside `e.stopPropagation()` on action button wrappers so clicking "Open" or "Assign" on mobile cards does not trigger the parent link navigation.
+
+### Verification
+- `GET /api/analytics/summary`: **200 OK** (verified with seeded database: 26 total grievances, 17 active, 14 overdue SLA).
+- `GET /api/complaints?overdue=true&sort=dueAt&limit=5`: **200 OK** (returns top 5 overdue grievances with SLA calculations).
+- `GET /api/categories?all=true`: **200 OK** (returns all 7 categories).
+- `GET /api/users`: **200 OK** (returns paginated users list).
+- `GET /api/users/officers`: **200 OK** (returns 3 active department officers).
+- `npm run lint` in `/client`: **0 errors**.
+- `npm run build` in `/client`: **PASS**.
+
 
 
 
