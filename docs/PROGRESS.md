@@ -370,6 +370,72 @@ All files verified by static review. Smoke script ready to run once `.env` is co
 - `npm.cmd run lint` in `/client`: **PASS** (0 warnings, 0 errors across 59 files).
 - `npm.cmd run build` in `/client`: **PASS** (2,001 modules transformed into production bundle in 516ms).
 
+---
+
+## 2026-10-04 | Prompt F5 — Workflow Actions (Assign, Update Status, Verify, Reopen, Feedback)
+
+### What was built
+- **client/src/features/complaints/ComplaintActions.jsx**:
+  - Permission-driven workflow container strictly governed by `allowedActions` and `allowedNextStatuses` from the API (no client-side re-implementation of business rules).
+  - Contextual action hint card explaining next logical step based on current status and user role.
+  - 409 conflict handling displaying refresh toast when another party modifies complaint concurrently.
+- **client/src/features/complaints/AssignModal.jsx**:
+  - Modal with officer selection dropdown populated from `GET /users/officers` (department-scoped for officers, campus-wide for admins).
+  - Quick "Assign to me" shortcut button and optional assignment context note.
+- **Modals & Dialogs**:
+  - `UpdateStatusModal`: Dynamic transition target selector restricted to `allowedNextStatuses`, 3-500 character note requirement, and mandatory resolution notes when promoting to `Resolved`.
+  - `VerifyDialog`: Confirmation dialog for complainants closing resolved complaints, seamlessly opening the feedback dialog upon completion.
+  - `ReopenModal`: Requires 10-1000 character rationale, incrementing reopen counter and reverting status to `In Progress`.
+  - `FeedbackModal`: Star rating (1-5) and optional satisfaction comments.
+
+### Decisions
+- Modals reset state when closed or on successful submission to prevent stale inputs.
+- Extracted `AssignModal` into a dedicated component so it can be reused without page navigation in `/admin/complaints`.
+
+### Verification
+- `npm run lint` in `/client`: **PASS** (0 errors).
+- `npm run build` in `/client`: **PASS**.
+
+---
+
+## 2026-10-04 | Prompt F6 — Officer Queue & Admin Complaints Management
+
+### What was built
+- **client/src/pages/OfficerQueuePage.jsx** mounted at `/officer` (officer only):
+  - 4 interactive stat cards from `GET /analytics/my-summary`: Assigned, In Progress, Overdue SLA, and Unassigned Pool.
+  - Tabs mapped to `scope`: "Assigned to me", "Unassigned (my department)", "All Department Queue" with live ticket counts.
+  - Filter bar: status dropdown, priority dropdown, sort dropdown (defaulting to `dueAt` ascending for urgent-first handling), "Overdue only" toggle, and 350ms debounced search.
+  - Unassigned tab rows feature a 1-click "Assign to me" button with `ConfirmDialog` and immediate queue/summary refetch.
+  - Overdue grievances highlighted with red background styling, warning chips, and days overdue (`Xd overdue`).
+  - High priority grievances highlighted with urgent badges.
+  - Anonymous filers properly masked with "Anonymous" label.
+  - URL query string synchronization with `useSearchParams` across all filters, tab, sort, and pagination.
+  - 30-second background polling via `useFetch`, loading skeletons, error banner with retry, and empty states.
+- **client/src/pages/AdminComplaintsPage.jsx** mounted at `/admin/complaints` (admin only):
+  - Comprehensive complaint repository with filters for status, priority, category (`getCategories`), assigned officer (`getOfficers`), overdue toggle, search, and sort.
+  - Table displaying Code, Title, Category, Priority, Status, Filer, Assignee, Submitted date, and SLA Due target.
+  - Row action menu: "Open" link to `/complaints/:id` and "Assign / Reassign" button triggering the in-place `AssignModal`.
+  - "Export CSV" feature: fetches filtered results up to 1000 records in batches of 50, escapes quotes and commas by hand, and triggers client-side download via Blob URL.
+  - URL query string synchronization with `useSearchParams` for shareable and refresh-resilient state.
+  - 30-second background polling via `useFetch`, responsive mobile card views, skeletons, and empty states.
+- **client/src/features/complaints/ComplaintTable.jsx & ComplaintCard.jsx**:
+  - Enhanced to highlight overdue rows in rose tints with calculated days overdue.
+  - Distinct High priority indicator.
+  - Customizable `renderActions` prop for role-specific row buttons.
+- **client/src/lib/format.js**:
+  - Added `getDaysOverdue(dueAt)` helper.
+- **client/src/routes/AppRoutes.jsx**:
+  - Connected `/officer` to `OfficerQueuePage` and `/admin/complaints` to `AdminComplaintsPage`.
+
+### Decisions
+- Hand-written CSV generator escapes commas, quotes, and newlines per RFC 4180 and creates a Blob download without third-party dependencies.
+- `useSearchParams` maintains clean URLs by omitting default filter values (`All`, `dueAt`, page 1) to keep shareable links concise.
+
+### Verification
+- `npm run lint` in `/client`: **PASS** (0 errors).
+- `npm run build` in `/client`: **PASS** (2,005 modules transformed in 1.33s).
+
+
 
 
 

@@ -11,6 +11,8 @@ import { RegisterPage } from '../pages/RegisterPage';
 import { DashboardPage } from '../pages/DashboardPage';
 import { NewComplaintPage } from '../pages/NewComplaintPage';
 import { ComplaintDetailPage } from '../pages/ComplaintDetailPage';
+import { OfficerQueuePage } from '../pages/OfficerQueuePage';
+import { AdminComplaintsPage } from '../pages/AdminComplaintsPage';
 import { ProfilePage } from '../pages/ProfilePage';
 import { ForbiddenPage } from '../pages/ForbiddenPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
@@ -58,20 +60,7 @@ export function AppRoutes() {
 
           {/* Officer Routes */}
           <Route element={<RoleRoute allowedRoles={['officer']} />}>
-            <Route
-              path="/officer"
-              element={
-                <PageStub
-                  title="Officer Grievance Queue"
-                  subtitle="Department triage inbox, assignment management, and status updates."
-                  promptLabel="Phase F5"
-                  breadcrumbs={[
-                    { label: 'Home', href: '/officer' },
-                    { label: 'My Queue' },
-                  ]}
-                />
-              }
-            />
+            <Route path="/officer" element={<OfficerQueuePage />} />
           </Route>
 
           {/* Admin Routes */}
@@ -90,20 +79,7 @@ export function AppRoutes() {
                 />
               }
             />
-            <Route
-              path="/admin/complaints"
-              element={
-                <PageStub
-                  title="All Campus Complaints"
-                  subtitle="Master repository of all complaints with filters, search, and reassignment controls."
-                  promptLabel="Phase F5"
-                  breadcrumbs={[
-                    { label: 'Home', href: '/admin' },
-                    { label: 'All Complaints' },
-                  ]}
-                />
-              }
-            />
+            <Route path="/admin/complaints" element={<AdminComplaintsPage />} />
             <Route
               path="/admin/categories"
               element={

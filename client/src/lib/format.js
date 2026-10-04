@@ -111,3 +111,12 @@ export function formatFileSize(bytes) {
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
 }
+
+export function getDaysOverdue(dueAt) {
+  if (!dueAt) return 0;
+  const due = new Date(dueAt).getTime();
+  if (Number.isNaN(due)) return 0;
+  const diff = Date.now() - due;
+  if (diff <= 0) return 0;
+  return Math.max(1, Math.floor(diff / (1000 * 60 * 60 * 24)));
+}
